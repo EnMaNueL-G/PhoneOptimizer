@@ -110,7 +110,11 @@ fun PhoneOptimizerApp(viewModel: MainViewModel) {
                 .padding(paddingValues)
         ) {
             when (currentTab) {
-                0 -> DashboardScreen(stats)
+                0 -> DashboardScreen(
+                    stats = stats,
+                    isOptimizing = isOptimizing,
+                    onQuickOptimize = viewModel::optimize
+                )
                 1 -> OptimizeScreen(
                     selectedProfile = selectedProfile,
                     onProfileSelected = viewModel::setProfile,

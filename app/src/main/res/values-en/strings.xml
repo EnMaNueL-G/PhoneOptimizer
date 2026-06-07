@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PhoneOptimizer</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_optimize">Optimize</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Control Panel</string>
+    <string name="dashboard_quick_optimize">Quick Optimize</string>
+    <string name="dashboard_quick_optimize_desc">Free RAM, stop processes, tune the system</string>
+    <string name="dashboard_optimizing">Optimizing…</string>
+    <string name="dashboard_optimizing_desc">Freeing RAM and applying settings</string>
+    <string name="stat_ram_free">Free RAM</string>
+    <string name="stat_battery">Battery</string>
+    <string name="stat_storage">Storage</string>
+    <string name="stat_processes">Processes</string>
+    <string name="stat_active">active</string>
+    <string name="stat_charging">Charging</string>
+    <string name="stat_discharging">Discharging</string>
+
+    <!-- Optimize screen -->
+    <string name="optimize_title">Optimization</string>
+    <string name="optimize_button">Optimize Now</string>
+    <string name="optimize_profile_label">Optimization Profile</string>
+    <string name="optimize_complete">Full optimization active</string>
+    <string name="optimize_basic">Basic mode — no extra setup</string>
+    <string name="optimize_result_done">Optimization complete</string>
+    <string name="optimize_result_error">Error</string>
+    <string name="optimize_apps_killed">Apps stopped</string>
+    <string name="optimize_ram_freed">RAM freed</string>
+    <string name="optimize_actions">Actions</string>
+
+    <!-- Apps screen -->
+    <string name="apps_tab_top">Top Apps</string>
+    <string name="apps_tab_history">History</string>
+    <string name="apps_top_title">Apps by RAM usage</string>
+    <string name="apps_none">No running apps detected</string>
+    <string name="apps_history_empty_title">No history yet</string>
+    <string name="apps_history_empty_desc">Optimize your device to see records here</string>
+    <string name="apps_stop">Stop</string>
+    <string name="apps_clear_history">Clear</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_advanced_status">Advanced Optimization Status</string>
+    <string name="settings_advanced_granted">Advanced permissions active</string>
+    <string name="settings_advanced_pending">Basic optimization only</string>
+    <string name="settings_adblock_title">Ad Blocking — Private DNS</string>
+    <string name="settings_adblock_label">Block system-wide ads</string>
+    <string name="settings_adblock_active">Active — DNS: dns.adguard.com</string>
+    <string name="settings_adblock_inactive">Inactive</string>
+    <string name="settings_monitor_title">Background Thermal Monitor</string>
+    <string name="settings_monitor_label">Continuous monitoring</string>
+    <string name="settings_donate_title">Support the Project</string>
+    <string name="settings_donate_question">Was the app useful?</string>
+    <string name="settings_donate_body">PhoneOptimizer is 100% free, ad-free and open source. If it improved your device\'s performance, consider supporting its development with a voluntary contribution.</string>
+    <string name="settings_donate_steps">Open Binance → Pay → Search → Paste Pay ID</string>
+    <string name="settings_about_title">About PhoneOptimizer</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_developer">Developed by</string>
+    <string name="settings_compatibility">Compatibility</string>
+    <string name="settings_no_deps">No external dependencies</string>
+    <string name="settings_no_deps_value">No root or third-party apps required</string>
+
+    <!-- Thermal -->
+    <string name="thermal_normal">Normal</string>
+    <string name="thermal_warm">Warm</string>
+    <string name="thermal_hot">Hot</string>
+    <string name="thermal_critical">Critical</string>
+    <string name="thermal_emergency">Emergency</string>
+    <string name="thermal_shutdown">Shutting down</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_name">Thermal Monitor</string>
+    <string name="notif_channel_desc">Continuous device temperature monitoring</string>
+    <string name="notif_monitoring">Monitoring temperature…</string>
+    <string name="notif_alert_title">High temperature!</string>
+    <string name="notif_alert_body">CPU at %1$.0f°C — Automatic optimization triggered</string>
+</resources>

@@ -19,14 +19,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.foundation.Canvas
 import com.enmanuelgil.optimizer.model.DeviceStats
 import com.enmanuelgil.optimizer.model.ThermalStatus
 import com.enmanuelgil.optimizer.ui.theme.*
 
 @Composable
-fun DashboardScreen(stats: DeviceStats) {
+fun DashboardScreen(
+    stats: DeviceStats,
+    isOptimizing: Boolean = false,
+    onQuickOptimize: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -44,7 +47,7 @@ fun DashboardScreen(stats: DeviceStats) {
             ThermalBadge(stats.thermalStatus)
         }
 
-        // Estado térmico destacado si hay problema
+        // Alerta térmica si hay problema
         if (stats.thermalStatus != ThermalStatus.NONE) {
             ThermalWarningCard(stats)
         }
@@ -81,12 +84,12 @@ fun DashboardScreen(stats: DeviceStats) {
             CircularMetric(
                 modifier = Modifier.weight(1f),
                 label = "Temp",
-                value = stats.temperatureCpu,
+                value = stats.temperatureBattery.coerceAtLeast(stats.temperatureCpu),
                 maxValue = 60f,
                 unit = "°C",
                 color = when {
-                    stats.temperatureCpu > 50f -> AccentRed
-                    stats.temperatureCpu > 42f -> AccentOrange
+                    stats.temperatureBattery > 50f -> AccentRed
+                    stats.temperatureBattery > 42f -> AccentOrange
                     else -> AccentGreen
                 }
             )
@@ -158,7 +161,89 @@ fun DashboardScreen(stats: DeviceStats) {
             }
         }
 
-        Spacer(Modifier.height(80.dp)) // espacio para bottom nav
+        // Botón de optimización rápida
+        QuickOptimizeButton(isOptimizing = isOptimizing, onClick = onQuickOptimize)
+
+        Spacer(Modifier.height(80.dp))
+    }
+}
+
+@Composable
+fun QuickOptimizeButton(isOptimizing: Boolean, onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.7f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "pulseAlpha"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOptimizing) AccentOrange.copy(alpha = 0.12f)
+                             else AccentGreen.copy(alpha = 0.1f)
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (isOptimizing) AccentOrange.copy(alpha = pulseAlpha * 0.6f)
+            else AccentGreen.copy(alpha = 0.4f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        onClick = { if (!isOptimizing) onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isOptimizing) AccentOrange.copy(alpha = 0.2f)
+                        else AccentGreen.copy(alpha = 0.2f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isOptimizing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(26.dp),
+                        color = AccentOrange,
+                        strokeWidth = 2.5.dp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.FlashOn,
+                        contentDescription = null,
+                        tint = AccentGreen,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (isOptimizing) "Optimizando..." else "Optimización Rápida",
+                    fontWeight = FontWeight.Bold,
+                    color = if (isOptimizing) AccentOrange else TextPrimary,
+                    fontSize = 15.sp
+                )
+                Text(
+                    if (isOptimizing) "Liberando RAM y aplicando ajustes"
+                    else "Libera RAM, procesos y ajusta el sistema",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
+            if (!isOptimizing) {
+                Icon(
+                    Icons.Default.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = TextSecondary.copy(alpha = 0.5f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
     }
 }
 
@@ -180,7 +265,7 @@ fun ThermalWarningCard(stats: DeviceStats) {
             Column {
                 Text("Temperatura ${stats.thermalStatus.label}", fontWeight = FontWeight.Bold, color = color)
                 Text(
-                    "CPU: ${"%.1f".format(stats.temperatureCpu)}°C | Superficie: ${"%.1f".format(stats.temperatureSkin)}°C",
+                    "Batería: ${"%.1f".format(stats.temperatureBattery)}°C | CPU: ${"%.1f".format(stats.temperatureCpu)}°C",
                     color = TextSecondary, fontSize = 13.sp
                 )
             }
