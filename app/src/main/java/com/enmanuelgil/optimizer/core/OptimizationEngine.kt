@@ -110,6 +110,16 @@ class OptimizationEngine(private val context: Context) {
                 delay(200)
             }
 
+            // 9. Limpiar caché DNS del sistema
+            onProgress("Limpiando caché DNS...")
+            PrivilegedHelper.exec("ndc resolver clearnetdns")
+            actions.add("Caché DNS limpiada")
+
+            // 10. Cancelar trabajos diferidos pendientes que consumen recursos
+            onProgress("Cancelando tareas diferidas...")
+            PrivilegedHelper.exec("cmd jobscheduler reset-execution-quota")
+            actions.add("Cuota de tareas diferidas reiniciada")
+
         } else {
             actions.add("⚠ Optimización avanzada no disponible — ejecuta el comando ADB en Ajustes")
         }
