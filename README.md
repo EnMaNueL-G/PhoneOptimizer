@@ -113,7 +113,32 @@ ANDROID_HOME = C:\Users\<usuario>\AppData\Local\Android\Sdk
 
 ---
 
-## Resolución de problemas conocidos
+## Errores conocidos por fabricante
+
+### ❌ Xiaomi MIUI V14 / HyperOS — el comando ADB falla
+
+**Síntoma:** al ejecutar el comando de activación aparece:
+```
+Exception: grantRuntimePermission: Neither user 2000 nor current process
+has android.permission.GRANT_RUNTIME_PERMISSIONS.
+```
+
+**Causa:** Xiaomi bloquea en MIUI V14 y HyperOS la capacidad de que ADB shell otorgue permisos avanzados. No es un fallo de la app ni del comando — es una restricción impuesta por el fabricante.
+
+**Impacto:** las funciones avanzadas (animaciones, WiFi scan, Doze, sync) no se pueden activar en estos modelos. La optimización básica (RAM, procesos, GC) funciona sin ningún problema.
+
+**No tiene solución** sin root o sin cambiar la ROM del dispositivo.
+
+**Dispositivos confirmados SIN este problema:**
+- Samsung Galaxy (todos los modelos, Android 8–15) ✅
+- Motorola ✅
+- Google Pixel ✅
+- OnePlus / realme ✅
+- Xiaomi con MIUI estándar (versiones anteriores a V14) ✅
+
+---
+
+## Resolución de problemas
 
 ### La app se cierra al abrir (crash)
 - **Causa en Android 14+:** El servicio no tiene permiso para `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`

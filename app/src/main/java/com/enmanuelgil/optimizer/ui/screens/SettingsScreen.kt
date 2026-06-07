@@ -84,12 +84,44 @@ fun SettingsScreen(
                     command = "adb shell pm grant com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS",
                     onCopy = { clipboard.setText(AnnotatedString(it)) }
                 )
-                Text(
-                    "Funciona en: Samsung, Xiaomi estándar, Motorola, Google Pixel y la mayoría de Android.\n" +
-                    "En MIUI V14 las animaciones siguen bloqueadas por el fabricante, pero el resto (Doze, WiFi scan, sync) sí funciona.",
-                    fontSize = 12.sp, color = TextSecondary.copy(alpha = 0.8f)
-                )
-                Text("Después de ejecutar, reinicia la app para activar.", fontSize = 12.sp, color = AccentOrange)
+                Text("Después de ejecutar, cierra y vuelve a abrir la app.", fontSize = 12.sp, color = AccentOrange)
+
+                Divider(color = TextSecondary.copy(alpha = 0.1f))
+
+                // Aviso MIUI
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = AccentOrange,
+                        modifier = Modifier.size(16.dp).padding(top = 1.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "Xiaomi con MIUI V14 / HyperOS",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AccentOrange
+                        )
+                        Text(
+                            "El fabricante bloquea este comando con el error:\n" +
+                            "\"GRANT_RUNTIME_PERMISSIONS not allowed\"\n\n" +
+                            "No es un fallo de la app — es una restricción de Xiaomi. " +
+                            "La optimización básica (RAM, procesos, GC) funciona igual sin el comando. " +
+                            "Las funciones avanzadas (animaciones, WiFi scan, Doze) no están disponibles en este modelo.",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                        Text(
+                            "Dispositivos confirmados SIN este problema: Samsung Galaxy (todos), Motorola, Google Pixel, OnePlus.",
+                            fontSize = 11.sp,
+                            color = TextSecondary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
             }
         }
 
