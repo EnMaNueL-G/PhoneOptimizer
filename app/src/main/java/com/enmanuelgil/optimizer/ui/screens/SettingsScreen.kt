@@ -201,6 +201,72 @@ fun SettingsScreen(
             }
         }
 
+        // Donaciones
+        SectionHeader("Apoya el Proyecto")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardDark),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, AccentOrange.copy(alpha = 0.35f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(Icons.Default.Favorite, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(22.dp))
+                    Text(
+                        "¿Te fue útil la app?",
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        fontSize = 15.sp
+                    )
+                }
+                Text(
+                    "PhoneOptimizer es 100% gratuita, sin anuncios y de código abierto. " +
+                    "Si mejoró el rendimiento de tu dispositivo, considera apoyar su desarrollo " +
+                    "con una contribución voluntaria — cada aporte ayuda a seguir mejorando la app.",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    lineHeight = 18.sp
+                )
+                Divider(color = TextSecondary.copy(alpha = 0.1f))
+                Text("Binance Pay", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AccentOrange)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(BackgroundDark)
+                        .border(1.dp, AccentOrange.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Pay ID", fontSize = 11.sp, color = TextSecondary)
+                        Text(
+                            "1140153333",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentOrange
+                        )
+                    }
+                    IconButton(
+                        onClick = { clipboard.setText(AnnotatedString("1140153333")) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copiar Pay ID", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                }
+                Text(
+                    "Abre Binance → Pagar → Buscar → Pegar Pay ID",
+                    fontSize = 11.sp,
+                    color = TextSecondary.copy(alpha = 0.7f)
+                )
+            }
+        }
+
         // Info de la app
         SectionHeader("Acerca de PhoneOptimizer")
         Card(
@@ -209,7 +275,7 @@ fun SettingsScreen(
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                InfoRow("Versión", "1.1.0")
+                InfoRow("Versión", "1.3.0")
                 InfoRow("Desarrollado por", "Enmanuel Gil")
                 InfoRow("Compatibilidad", "Android 8.0+ (API 26)")
                 InfoRow("Sin dependencias externas", "No requiere Shizuku ni root")

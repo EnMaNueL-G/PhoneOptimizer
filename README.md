@@ -1,7 +1,7 @@
 # PhoneOptimizer
 
 **Desarrollado por Enmanuel Gil**
-Versión 1.1.0 | Android 8.0+ (API 26) | Sin dependencias externas
+Versión 1.3.0 | Android 8.0+ (API 26) | Sin dependencias externas
 
 Aplicación Android de optimización avanzada de rendimiento y temperatura. Analiza, detecta y corrige automáticamente los problemas de sobrecalentamiento y lentitud del dispositivo en tiempo real.
 
@@ -32,6 +32,47 @@ Aplicación Android de optimización avanzada de rendimiento y temperatura. Anal
 - Pausar sincronización automática de Google
 - Activar modo Doze profundo (ahorro energético)
 - Garbage Collection y trim de memoria
+- Limpiar caché DNS del sistema
+- Reiniciar cuota de tareas diferidas (JobScheduler)
+
+### Bloqueo de Anuncios — DNS Privado
+
+PhoneOptimizer incluye un **filtro de anuncios a nivel de sistema** que no requiere instalar ninguna app adicional. Funciona configurando el DNS privado del dispositivo al servidor de AdGuard.
+
+**¿Cómo funciona?**
+Cuando activás el toggle en Ajustes → "Bloquear anuncios del sistema", la app ejecuta:
+```
+Settings.Global → private_dns_mode = "hostname"
+Settings.Global → private_dns_specifier = "dns.adguard.com"
+```
+El sistema operativo redirige **todas las consultas DNS** de todas las apps a través del servidor de AdGuard, que filtra dominios de anuncios y rastreadores conocidos antes de que lleguen al dispositivo.
+
+**¿Qué bloquea?**
+- Anuncios en browsers (Chrome, Firefox, Samsung Internet)
+- Anuncios en apps (YouTube, apps de noticias, juegos)
+- Rastreadores de datos de terceros (Meta Pixel, Google Analytics, etc.)
+- Dominios de malware conocidos
+
+**Requisitos:**
+- Permisos avanzados activos (comando ADB)
+- Conexión a internet (para que el DNS resuelva consultas legítimas)
+
+**Para desactivar:** vuelve a tocar el toggle. La app restaura el modo DNS por defecto (`opportunistic`).
+
+**Privacidad del servidor DNS:** AdGuard no registra consultas DNS. Política oficial en: https://adguard-dns.io/es/privacy.html
+
+> **Alternativa manual** (sin la app): Ajustes → Conexiones → Más ajustes de conexión → DNS privado → Hostname: `dns.adguard.com`
+
+### Panel de Aplicaciones (Top Apps)
+
+La pestaña **Apps** muestra en tiempo real cuáles apps están consumiendo más RAM, usando dos métodos combinados:
+1. `ActivityManager.getRunningAppProcesses()` — API estándar de Android
+2. Lectura directa de `/proc/<pid>/status` (VmRSS) — cubre Android 12+ donde la API está restringida
+
+Cada app muestra su consumo en MB con barra de progreso coloreada:
+- 🟢 Bajo consumo (< 150 MB)
+- 🟠 Consumo moderado (150–300 MB)
+- 🔴 Alto consumo (> 300 MB)
 
 ### Monitor Térmico en Background
 - Monitoreo cada 10 segundos
@@ -218,6 +259,16 @@ PhoneOptimizer/
 
 ---
 
+## Apoya el Proyecto
+
+PhoneOptimizer es **gratuita, sin anuncios y de código abierto**. Si mejoró el rendimiento de tu dispositivo, podés apoyar su desarrollo:
+
+**Binance Pay ID: `1140153333`**
+
+Pasos: abre Binance → Pagar → Buscar → pegá el Pay ID.
+
+---
+
 ## Créditos
 
 **Desarrollado por:** Enmanuel Gil
@@ -226,4 +277,4 @@ PhoneOptimizer/
 
 ---
 
-*PhoneOptimizer v1.1.0 — Sin dependencias, sin compromisos*
+*PhoneOptimizer v1.3.0 — Sin dependencias, sin compromisos*
