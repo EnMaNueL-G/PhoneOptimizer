@@ -278,7 +278,7 @@ fun SettingsScreen(
                 InfoRow("Versión", "1.3.0")
                 InfoRow("Desarrollado por", "Enmanuel Gil")
                 InfoRow("Compatibilidad", "Android 8.0+ (API 26)")
-                InfoRow("Sin dependencias externas", "No requiere Shizuku ni root")
+                InfoRow("Sin dependencias externas", "No requiere root ni apps de terceros")
                 Divider(color = TextSecondary.copy(alpha = 0.1f))
                 Text(
                     "PhoneOptimizer optimiza CPU, RAM y temperatura en tiempo real. " +

@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Reemplaza Shizuku con APIs nativas de Android.
+ * Acceso privilegiado usando APIs nativas de Android.
  * WRITE_SECURE_SETTINGS se otorga una sola vez via ADB:
  *   adb shell pm grant <packageId> android.permission.WRITE_SECURE_SETTINGS
  */

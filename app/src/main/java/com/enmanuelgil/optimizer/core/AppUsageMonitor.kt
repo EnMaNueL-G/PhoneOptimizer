@@ -17,74 +17,78 @@ class AppUsageMonitor(private val context: Context) {
     private val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val pm = context.packageManager
 
+    @Suppress("DEPRECATION")
     fun getTopApps(limit: Int = 12): List<AppMemoryInfo> {
-        val fromApi = getFromActivityManager()
-        // Android 12+ restricts getRunningAppProcesses to own processes only —
-        // fall back to /proc if we get fewer than 3 results
-        val results = if (fromApi.size >= 3) fromApi else mergeWithProc(fromApi)
-        return results.sortedByDescending { it.memoryMb }.take(limit)
+        // getRunningServices() works on all Android versions including 12+
+        // where getRunningAppProcesses() is restricted to the own process only.
+        val services = try { am.getRunningServices(500) } catch (e: Exception) { null }
+
+        val byPkg = mutableMapOf<String, MutableList<Int>>() // pkg -> pids
+
+        // Collect PIDs from running services
+        services?.forEach { svc ->
+            val pkg = svc.service.packageName
+            if (pkg != context.packageName && pkg.isNotBlank()) {
+                byPkg.getOrPut(pkg) { mutableListOf() }.add(svc.pid)
+            }
+        }
+
+        // Also try own-process list (limited but available)
+        try {
+            am.runningAppProcesses?.forEach { proc ->
+                val pkg = proc.processName.split(":").first()
+                if (pkg != context.packageName) {
+                    byPkg.getOrPut(pkg) { mutableListOf() }.add(proc.pid)
+                }
+            }
+        } catch (e: Exception) {}
+
+        if (byPkg.isEmpty()) return emptyList()
+
+        return byPkg.mapNotNull { (pkg, pids) ->
+            // Verify it's an installed package
+            val appName = try {
+                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+            } catch (e: Exception) { return@mapNotNull null }
+
+            val isSystem = try {
+                pm.getApplicationInfo(pkg, 0).flags and ApplicationInfo.FLAG_SYSTEM != 0
+            } catch (e: Exception) { false }
+
+            // Try AM API first, fall back to /proc/pid/status (VmRSS)
+            val uniquePids = pids.distinct()
+            val memMb = getMemoryMb(uniquePids)
+            if (memMb <= 0) return@mapNotNull null
+
+            AppMemoryInfo(pkg, appName, memMb, isSystem)
+        }
+        .sortedByDescending { it.memoryMb }
+        .take(limit)
     }
 
-    private fun getFromActivityManager(): List<AppMemoryInfo> {
-        val processes = am.runningAppProcesses ?: return emptyList()
-        val pids = processes.map { it.pid }.toIntArray()
-        val memInfos = try { am.getProcessMemoryInfo(pids) } catch (e: Exception) { return emptyList() }
-        return processes.zip(memInfos.toList()).mapNotNull { (proc, mem) ->
-            val pkg = proc.processName.split(":").first()
-            if (pkg == context.packageName) return@mapNotNull null
-            val mb = mem.totalPss / 1024
-            if (mb <= 0) return@mapNotNull null
-            AppMemoryInfo(pkg, resolveAppName(pkg), mb, isSystemApp(pkg))
+    private fun getMemoryMb(pids: List<Int>): Int {
+        // Try ActivityManager API
+        return try {
+            val arr = pids.take(4).toIntArray() // API limit
+            val infos = am.getProcessMemoryInfo(arr)
+            val total = infos.sumOf { it.totalPss } / 1024
+            if (total > 0) total
+            else fallbackMemMb(pids)
+        } catch (e: Exception) {
+            fallbackMemMb(pids)
         }
     }
 
-    private fun mergeWithProc(existing: List<AppMemoryInfo>): List<AppMemoryInfo> {
-        val existingPkgs = existing.map { it.packageName }.toSet()
-        val procApps = readFromProc().filter { it.packageName !in existingPkgs }
-        return existing + procApps
-    }
-
-    // Reads process memory from /proc filesystem — works on all Android versions
-    // without ActivityManager restrictions.
-    private fun readFromProc(): List<AppMemoryInfo> {
-        val procDir = File("/proc")
-        val pidDirs = procDir.listFiles { f ->
-            f.isDirectory && f.name.all { it.isDigit() }
-        } ?: return emptyList()
-
-        return pidDirs.mapNotNull { pidDir ->
+    // Read VmRSS from /proc/<pid>/status — works when AM API is rate-limited
+    private fun fallbackMemMb(pids: List<Int>): Int {
+        return pids.sumOf { pid ->
             try {
-                val cmdline = File(pidDir, "cmdline").readBytes()
-                    .takeWhile { it != 0.toByte() }
-                    .toByteArray()
-                    .toString(Charsets.UTF_8)
-                    .trim()
-
-                if (cmdline.isBlank() || !cmdline.contains(".")) return@mapNotNull null
-
-                val pkg = cmdline.split(":").first()
-                if (pkg == context.packageName) return@mapNotNull null
-                // Only consider known installed packages to avoid kernel/system noise
-                try { pm.getApplicationInfo(pkg, 0) } catch (e: Exception) { return@mapNotNull null }
-
-                val rssKb = File(pidDir, "status").readLines()
+                File("/proc/$pid/status").readLines()
                     .firstOrNull { it.startsWith("VmRSS:") }
                     ?.replace(Regex("[^0-9]"), "")
-                    ?.toLongOrNull() ?: 0L
-
-                val mb = (rssKb / 1024).toInt()
-                if (mb < 5) return@mapNotNull null
-
-                AppMemoryInfo(pkg, resolveAppName(pkg), mb, isSystemApp(pkg))
-            } catch (e: Exception) { null }
+                    ?.toIntOrNull()
+                    ?.div(1024) ?: 0
+            } catch (e: Exception) { 0 }
         }
     }
-
-    private fun resolveAppName(pkg: String): String = try {
-        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-    } catch (e: Exception) { pkg.substringAfterLast(".") }
-
-    private fun isSystemApp(pkg: String): Boolean = try {
-        pm.getApplicationInfo(pkg, 0).flags and ApplicationInfo.FLAG_SYSTEM != 0
-    } catch (e: Exception) { false }
 }
