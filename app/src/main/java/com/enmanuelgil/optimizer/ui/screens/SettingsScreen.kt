@@ -22,6 +22,8 @@ import com.enmanuelgil.optimizer.viewmodel.PrivilegesStatus
 @Composable
 fun SettingsScreen(
     privilegesStatus: PrivilegesStatus,
+    adBlockEnabled: Boolean,
+    onAdBlockToggle: (Boolean) -> Unit,
     onStartMonitor: () -> Unit,
     onStopMonitor: () -> Unit
 ) {
@@ -120,6 +122,50 @@ fun SettingsScreen(
                             fontSize = 11.sp,
                             color = TextSecondary.copy(alpha = 0.7f)
                         )
+                    }
+                }
+            }
+        }
+
+        // Bloqueo de anuncios DNS
+        SectionHeader("Bloqueo de Anuncios — DNS Privado")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardDark),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Bloquear anuncios del sistema", fontWeight = FontWeight.Medium, color = TextPrimary)
+                        Text(
+                            if (adBlockEnabled) "Activo — DNS: dns.adguard.com" else "Inactivo",
+                            fontSize = 12.sp,
+                            color = if (adBlockEnabled) AccentGreen else TextSecondary
+                        )
+                    }
+                    Switch(
+                        checked = adBlockEnabled,
+                        onCheckedChange = onAdBlockToggle,
+                        enabled = privilegesStatus == PrivilegesStatus.GRANTED,
+                        colors = SwitchDefaults.colors(checkedThumbColor = AccentGreen)
+                    )
+                }
+                Text(
+                    "Redirige las consultas DNS al servidor de AdGuard. Bloquea anuncios y rastreadores en todas las apps sin instalar nada extra. Requiere permisos avanzados (ADB).",
+                    fontSize = 12.sp, color = TextSecondary
+                )
+                if (privilegesStatus != PrivilegesStatus.GRANTED) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(14.dp))
+                        Text("Requiere el comando ADB de abajo", fontSize = 11.sp, color = AccentOrange)
                     }
                 }
             }

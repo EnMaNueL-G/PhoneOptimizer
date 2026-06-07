@@ -37,6 +37,7 @@ class OptimizationEngine(private val context: Context) {
 
     suspend fun optimize(
         profile: OptimizationProfile,
+        temperatureBefore: Float = 0f,
         onProgress: (String) -> Unit = {}
     ): OptimizationResult = withContext(Dispatchers.IO) {
         val actions = mutableListOf<String>()
@@ -90,12 +91,13 @@ class OptimizationEngine(private val context: Context) {
                 actions.add("Sincronización automática pausada")
             }
 
-            // 7. Doze profundo
+            // 7. Doze profundo + forzar entrada inmediata
             if (profile.enableDoze) {
                 onProgress("Activando modo Doze...")
                 PrivilegedHelper.exec("dumpsys deviceidle enable deep")
                 PrivilegedHelper.exec("dumpsys deviceidle enable light")
-                actions.add("Modo Doze profundo activado")
+                PrivilegedHelper.exec("dumpsys deviceidle force-idle deep")
+                actions.add("Modo Doze profundo activado y forzado")
             }
 
             // 8. Restricción de datos background de apps pesadas
@@ -119,6 +121,7 @@ class OptimizationEngine(private val context: Context) {
             ramFreedMb = maxOf(0L, ramAfter - ramBefore),
             cacheFreedMb = 0L,
             appsKilled = appsKilled,
+            temperatureBefore = temperatureBefore,
             success = true
         )
     }

@@ -60,12 +60,17 @@ fun PhoneOptimizerApp(viewModel: MainViewModel) {
     val lastResult by viewModel.lastResult.collectAsStateWithLifecycle()
     val selectedProfile by viewModel.selectedProfile.collectAsStateWithLifecycle()
     val privilegesStatus by viewModel.privilegesStatus.collectAsStateWithLifecycle()
+    val adBlockEnabled by viewModel.adBlockEnabled.collectAsStateWithLifecycle()
+    val topApps by viewModel.topApps.collectAsStateWithLifecycle()
+    val isLoadingApps by viewModel.isLoadingApps.collectAsStateWithLifecycle()
+    val history by viewModel.optimizationHistory.collectAsStateWithLifecycle()
 
     var currentTab by remember { mutableIntStateOf(0) }
 
     val tabs = listOf(
         NavTab("Panel", Icons.Default.Dashboard),
         NavTab("Optimizar", Icons.Default.FlashOn),
+        NavTab("Apps", Icons.Default.PhoneAndroid),
         NavTab("Ajustes", Icons.Default.Settings)
     )
 
@@ -115,8 +120,18 @@ fun PhoneOptimizerApp(viewModel: MainViewModel) {
                     privilegesStatus = privilegesStatus,
                     onOptimize = viewModel::optimize
                 )
-                2 -> SettingsScreen(
+                2 -> AppsScreen(
+                    topApps = topApps,
+                    isLoading = isLoadingApps,
+                    history = history,
+                    onRefreshApps = viewModel::loadTopApps,
+                    onForceStop = viewModel::forceStopApp,
+                    onClearHistory = viewModel::clearHistory
+                )
+                3 -> SettingsScreen(
                     privilegesStatus = privilegesStatus,
+                    adBlockEnabled = adBlockEnabled,
+                    onAdBlockToggle = viewModel::toggleAdBlock,
                     onStartMonitor = { ThermalMonitorService.start(context) },
                     onStopMonitor = { ThermalMonitorService.stop(context) }
                 )
