@@ -1,0 +1,166 @@
+﻿====================================================================
+GUIA DE CONTINUACION â€” PhoneOptimizer
+Para usar al iniciar un nuevo chat con Claude
+Actualizada: 2026-06-07
+====================================================================
+
+ESTADO ACTUAL DEL PROYECTO
+---------------------------
+VersiÃ³n activa: v1.4.0
+GitHub: https://github.com/EnMaNueL-G/PhoneOptimizer
+Rama activa: main  |  Commit: 5415e9a
+
+Releases publicadas:
+  v1.0.0 â€” versiÃ³n inicial
+  v1.1.0 â€” eliminaciÃ³n Shizuku, soporte ADB nativo, optimizaciÃ³n MIUI V14 documentada
+  v1.2.0 â€” DNS adblock, pestaÃ±a top apps, historial, Doze force-idle
+  v1.3.0 â€” botÃ³n donaciÃ³n (Binance Pay 1140153333), fix RAM Android 12+
+  v1.4.0 â€” fix CPU/apps/procesos, botÃ³n OptimizaciÃ³n RÃ¡pida en dashboard, i18n ES+EN
+
+APK v1.4.0:
+  https://github.com/EnMaNueL-G/PhoneOptimizer/releases/download/v1.4.0/PhoneOptimizer-v1.4.0.apk
+
+Pay ID Binance: 1140153333
+
+====================================================================
+ARQUITECTURA DEL PROYECTO
+====================================================================
+
+UbicaciÃ³n local: C:\Users\usuario\Desktop\SER\PhoneOptimizer\
+Package ID: com.enmanuelgil.optimizer
+
+Archivos clave:
+  core/SystemMonitor.kt         â€” CPU pre-warm + fallback /proc/loadavg
+                                  procesos via getRunningServices()
+  core/OptimizationEngine.kt    â€” motor completo, Doze force-idle, DNS cache, JobScheduler
+  core/PrivilegedHelper.kt      â€” Settings.Global API (requiere WRITE_SECURE_SETTINGS)
+  core/AdBlockManager.kt        â€” DNS privado a dns.adguard.com via Settings.Global
+  core/AppUsageMonitor.kt       â€” getRunningServices() + /proc/pid/status fallback
+  core/HistoryManager.kt        â€” SharedPreferences JSON, max 30 registros
+  model/OptimizationRecord.kt   â€” modelo historial
+  viewmodel/MainViewModel.kt    â€” stats, isOptimizing, adBlock, topApps, history, privileges
+  ui/screens/DashboardScreen.kt â€” mÃ©tricas + QuickOptimizeButton animado
+  ui/screens/OptimizeScreen.kt  â€” 5 perfiles + botÃ³n + resultado
+  ui/screens/AppsScreen.kt      â€” Top Apps y Historial (2 sub-tabs con FilterChip)
+  ui/screens/SettingsScreen.kt  â€” ADB cmd, DNS toggle, donaciÃ³n, MIUI warning, info
+  res/values/strings.xml        â€” strings en espaÃ±ol (idioma default)
+  res/values-en/strings.xml     â€” traducciÃ³n completa al inglÃ©s
+
+====================================================================
+PERMISO AVANZADO (ADB â€” UNA SOLA VEZ POR DISPOSITIVO)
+====================================================================
+
+adb shell pm grant com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS
+
+Funciona en:  Samsung Galaxy (todos), Motorola, Google Pixel, OnePlus, realme
+NO funciona:  Xiaomi MIUI V14 / HyperOS (error: GRANT_RUNTIME_PERMISSIONS not allowed)
+
+====================================================================
+PROBLEMAS CONOCIDOS Y ESTADO
+====================================================================
+
+MIUI V14 â€” pm grant bloqueado         â†’ Documentado en app y README, sin soluciÃ³n sin root
+CPU 0%                                â†’ RESUELTO v1.4.0 (pre-warm + loadavg fallback)
+Apps panel vacÃ­o Android 12+          â†’ RESUELTO v1.4.0 (getRunningServices)
+Proceso count = 1 en Android 12+      â†’ RESUELTO v1.4.0 (getRunningServices)
+
+====================================================================
+DISPOSITIVOS PROBADOS
+====================================================================
+
+Samsung Galaxy S21     (R5CR60HG5DF)  Android 15 â€” WRITE_SECURE_SETTINGS: âœ… OK
+Samsung Galaxy S938B   (R5CY93Z4X4E)  Android 15 â€” WRITE_SECURE_SETTINGS: âœ… OK
+Xiaomi Redmi Note 12   MIUI V14       Android 13 â€” WRITE_SECURE_SETTINGS: âŒ BLOQUEADO
+
+====================================================================
+COMPILAR Y FIRMAR APK
+====================================================================
+
+cd C:\Users\usuario\Desktop\SER\PhoneOptimizer
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "C:\Users\usuario\AppData\Local\Android\Sdk"
+.\gradlew.bat assembleRelease
+
+# Firmar con debug.keystore (para pruebas):
+$bt = "C:\Users\usuario\AppData\Local\Android\Sdk\build-tools\34.0.0"
+& "$bt\apksigner.bat" sign --ks "$env:USERPROFILE\.android\debug.keystore" `
+  --ks-pass pass:android --key-pass pass:android `
+  --out "app\release\PhoneOptimizer-vX.Y.Z.apk" `
+  "app\build\outputs\apk\release\app-release-unsigned.apk"
+
+# Instalar y dar permisos:
+$adb = "C:\Users\usuario\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+& $adb install -r "app\release\PhoneOptimizer-vX.Y.Z.apk"
+& $adb shell pm grant com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS
+
+====================================================================
+PUBLICAR EN GITHUB (PowerShell â€” en una sola sesiÃ³n)
+====================================================================
+
+# El token de GitHub estÃ¡ en Windows Credential Manager.
+# Usar clase Add-Type con nombre NUEVO en cada sesiÃ³n (CMx donde x = letra no usada).
+# Token se lee asÃ­:
+Add-Type -TypeDefinition @"...[class CMx con CredRead]..."@
+$token = [CMx]::GetToken("git:https://github.com")
+$h = @{ Authorization="token $token"; Accept="application/vnd.github+json" }
+
+# 1. SHA del commit actual:
+$sha = (Invoke-RestMethod "https://api.github.com/repos/EnMaNueL-G/PhoneOptimizer/commits/main" -Headers $h).sha
+
+# 2. Crear tag:
+Invoke-RestMethod "https://api.github.com/repos/EnMaNueL-G/PhoneOptimizer/git/refs" `
+  -Method Post -Headers $h `
+  -Body "{`"ref`":`"refs/tags/vX.Y.Z`",`"sha`":`"$sha`"}" -ContentType "application/json"
+
+# 3. Crear release:
+$body = @{ tag_name="vX.Y.Z"; name="PhoneOptimizer vX.Y.Z"; body="notas"; draft=$false; prerelease=$false } | ConvertTo-Json
+$release = Invoke-RestMethod "https://api.github.com/repos/EnMaNueL-G/PhoneOptimizer/releases" `
+  -Method Post -Headers $h -Body $body -ContentType "application/json"
+
+# 4. Subir APK:
+$uh = @{ Authorization="token $token"; "Content-Type"="application/vnd.android.package-archive" }
+$bytes = [System.IO.File]::ReadAllBytes("app\release\PhoneOptimizer-vX.Y.Z.apk")
+Invoke-RestMethod "https://uploads.github.com/repos/EnMaNueL-G/PhoneOptimizer/releases/$($release.id)/assets?name=PhoneOptimizer-vX.Y.Z.apk" `
+  -Method Post -Headers $uh -Body $bytes
+
+====================================================================
+GOOGLE PLAY â€” PRÃ“XIMOS PASOS
+====================================================================
+
+Ver guÃ­a completa: C:\Users\usuario\Desktop\SER\GUIA_GOOGLE_PLAY.md
+
+Checklist antes de publicar:
+  [ ] Generar keystore de producciÃ³n (phoneoptimizer.jks) â€” NO perder nunca
+      keytool -genkey -v -keystore phoneoptimizer.jks -keyalg RSA -keysize 2048 -validity 10000 -alias phoneoptimizer
+  [ ] Crear cuenta Play Console: https://play.google.com/console (USD $25)
+  [ ] Compilar con keystore de producciÃ³n
+  [ ] Capturas de pantalla S21 (mÃ­nimo 2, 1080p+)
+  [ ] Ãcono 512x512 PNG
+  [ ] PolÃ­tica de privacidad publicada en URL pÃºblica (GitHub Pages)
+  [ ] Enviar a revisiÃ³n â€” esperar 1-7 dÃ­as
+
+====================================================================
+PENDIENTES / IDEAS FUTURAS
+====================================================================
+
+- Widget de pantalla de inicio (temperatura + RAM)
+- GrÃ¡fico de temperatura Ãºltimas 24h
+- MigraciÃ³n completa strings hardcodeadas â†’ stringResource() (XML ya creados)
+  Los strings.xml estÃ¡n listos en values/ y values-en/ pero la mayorÃ­a de
+  Text() en Compose todavÃ­a usan strings hardcodeadas. Migrar gradualmente.
+- PolÃ­tica de privacidad en GitHub Pages (requerida para Google Play)
+- NotificaciÃ³n post-optimizaciÃ³n ("se liberaron X MB")
+
+====================================================================
+NOTAS IMPORTANTES
+====================================================================
+
+- La app NO tiene anuncios, NO recopila datos, NO requiere root
+- No quedan menciones a Shizuku en el cÃ³digo (eliminadas en v1.1.0 y v1.4.0)
+- Los archivos values-en/strings.xml ya estÃ¡n creados pero las pantallas
+  todavÃ­a usan strings hardcodeadas en su mayorÃ­a â€” la app detecta el idioma
+  del sistema Android pero solo cambia lo que usa stringResource()
+- El APK se firma con debug.keystore (pass: android) para pruebas.
+  Para Google Play se necesita keystore de producciÃ³n propia.
+
+====================================================================
