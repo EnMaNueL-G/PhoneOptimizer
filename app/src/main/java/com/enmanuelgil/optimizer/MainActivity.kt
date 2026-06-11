@@ -37,6 +37,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ThermalMonitorService.start(this)
+        // Mantenimiento automático periódico (sobrevive cierres/reinicios).
+        com.enmanuelgil.optimizer.service.MaintenanceScheduler.applyFromPrefs(this)
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
         setContent {
             PhoneOptimizerTheme {

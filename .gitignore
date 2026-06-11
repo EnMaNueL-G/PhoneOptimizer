@@ -10,3 +10,4 @@ captures/
 .cxx/
 *.apk
 !app/release/*.apk
+keystore.properties

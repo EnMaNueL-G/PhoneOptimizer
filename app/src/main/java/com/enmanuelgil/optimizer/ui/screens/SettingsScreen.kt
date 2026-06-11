@@ -1,5 +1,6 @@
 package com.enmanuelgil.optimizer.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import com.enmanuelgil.optimizer.service.MaintenancePrefs
+import com.enmanuelgil.optimizer.service.MaintenanceScheduler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +32,10 @@ fun SettingsScreen(
     onStopMonitor: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     var monitorActive by remember { mutableStateOf(true) }
+    var autoMaintEnabled by remember { mutableStateOf(MaintenancePrefs.isEnabled(context)) }
+    var autoMaintInterval by remember { mutableStateOf(MaintenancePrefs.intervalHours(context)) }
 
     Column(
         modifier = Modifier
@@ -201,6 +208,75 @@ fun SettingsScreen(
             }
         }
 
+        // Mantenimiento automático periódico
+        SectionHeader("Mantenimiento Automático")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardDark),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, AccentGreen.copy(alpha = 0.35f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Optimización periódica automática", fontWeight = FontWeight.Medium, color = TextPrimary)
+                        Text(
+                            "Mantiene el rendimiento solo: libera RAM y detiene procesos en segundo plano cada cierto tiempo, sin que hagas nada.",
+                            fontSize = 12.sp, color = TextSecondary
+                        )
+                    }
+                    Switch(
+                        checked = autoMaintEnabled,
+                        onCheckedChange = { on ->
+                            autoMaintEnabled = on
+                            MaintenancePrefs.setEnabled(context, on)
+                            if (on) MaintenanceScheduler.enable(context, autoMaintInterval)
+                            else MaintenanceScheduler.disable(context)
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = AccentGreen)
+                    )
+                }
+                if (autoMaintEnabled) {
+                    Text("Frecuencia", fontSize = 12.sp, color = TextSecondary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(3, 6, 12, 24).forEach { h ->
+                            val selected = autoMaintInterval == h
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (selected) AccentGreen.copy(alpha = 0.18f) else BackgroundDark,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp, if (selected) AccentGreen else TextSecondary.copy(alpha = 0.2f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        autoMaintInterval = h
+                                        MaintenancePrefs.setIntervalHours(context, h)
+                                        MaintenanceScheduler.enable(context, h)
+                                    }
+                            ) {
+                                Text(
+                                    "${h}h",
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    color = if (selected) AccentGreen else TextSecondary,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        "Cada ${autoMaintInterval} horas. Funciona en segundo plano aunque cierres la app.",
+                        fontSize = 11.sp, color = AccentGreen.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+
         // Donaciones
         SectionHeader("Apoya el Proyecto")
         Card(
@@ -310,17 +386,54 @@ fun SettingsScreen(
             colors = CardDefaults.cardColors(containerColor = CardDark),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                InfoRow("Versión", "1.5.0")
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Image(
+                        painter = androidx.compose.ui.res.painterResource(
+                            id = com.enmanuelgil.optimizer.R.drawable.brand_logo),
+                        contentDescription = "OptiSuite",
+                        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                    )
+                    Column {
+                        Text("PhoneOptimizer", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
+                        Text("Un proyecto OptiSuite · 100% gratis", fontSize = 12.sp, color = AccentGreen)
+                    }
+                }
+                Divider(color = TextSecondary.copy(alpha = 0.1f))
+                InfoRow("Versión", "1.6.0")
                 InfoRow("Desarrollado por", "Enmanuel Gil")
                 InfoRow("Compatibilidad", "Android 8.0+ (API 26)")
-                InfoRow("Sin dependencias externas", "No requiere root ni apps de terceros")
+                InfoRow("Sin anuncios ni telemetría", "Gratis para siempre · sin root")
                 Divider(color = TextSecondary.copy(alpha = 0.1f))
                 Text(
-                    "PhoneOptimizer optimiza CPU, RAM y temperatura en tiempo real. " +
-                    "No elimina datos personales ni modifica archivos del usuario.",
-                    fontSize = 12.sp, color = TextSecondary
+                    "Optimizador integral para Android: mantiene RAM, CPU y temperatura en óptimo " +
+                    "rendimiento en tiempo real, con mantenimiento automático periódico. No elimina " +
+                    "datos personales ni modifica archivos del usuario.",
+                    fontSize = 12.sp, color = TextSecondary, lineHeight = 17.sp
                 )
+                // Contacto / web
+                val ctx2 = LocalContext.current
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            try {
+                                ctx2.startActivity(Intent(Intent.ACTION_SENDTO,
+                                    android.net.Uri.parse("mailto:support@optisuite.app?subject=PhoneOptimizer")))
+                            } catch (_: Exception) {}
+                        }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Email, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                    Text("support@optisuite.app", fontSize = 13.sp, color = PrimaryBlue, fontWeight = FontWeight.Medium)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                    Text("optisuite.app", fontSize = 13.sp, color = TextSecondary)
+                }
             }
         }
 
