@@ -322,7 +322,7 @@ fun SettingsScreen(
                     Column {
                         Text("Pay ID", fontSize = 11.sp, color = TextSecondary)
                         Text(
-                            "1140153333",
+                            "1165745950",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -330,7 +330,7 @@ fun SettingsScreen(
                         )
                     }
                     IconButton(
-                        onClick = { clipboard.setText(AnnotatedString("1140153333")) },
+                        onClick = { clipboard.setText(AnnotatedString("1165745950")) },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copiar Pay ID", tint = TextSecondary, modifier = Modifier.size(18.dp))
@@ -357,7 +357,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Binance Smart Chain", fontSize = 11.sp, color = TextSecondary)
                         Text(
-                            "0x0a9a0d8d816ede885d1d4a5c94369a72ef86b3c1",
+                            "0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -365,7 +365,7 @@ fun SettingsScreen(
                         )
                     }
                     IconButton(
-                        onClick = { clipboard.setText(AnnotatedString("0x0a9a0d8d816ede885d1d4a5c94369a72ef86b3c1")) },
+                        onClick = { clipboard.setText(AnnotatedString("0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08")) },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copiar dirección BSC", tint = TextSecondary, modifier = Modifier.size(18.dp))
