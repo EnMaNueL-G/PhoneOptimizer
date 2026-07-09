@@ -30,7 +30,7 @@ Desarrollé una app que lo soluciona automáticamente.
 Desarrollado por Enmanuel Gil
 
 Si te fue útil, puedes apoyar el proyecto:
-💛 Binance Pay ID: **1140153333**
+💛 Binance Pay ID: **1165745950**
 
 ---
 
@@ -75,6 +75,6 @@ Descargá `Activar_Optimizacion_Avanzada.bat` desde GitHub Releases → doble cl
 Desarrollado por Enmanuel Gil
 Código fuente: https://github.com/EnMaNueL-G/PhoneOptimizer
 
-💛 **Apoyar el proyecto — Binance Pay ID: 1140153333**
+💛 **Apoyar el proyecto — Binance Pay ID: 1165745950**
 
 ---

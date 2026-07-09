@@ -323,11 +323,11 @@ PhoneOptimizer/
 
 PhoneOptimizer es **gratuita, sin anuncios y de código abierto**. Si mejoró el rendimiento de tu dispositivo, podés apoyar su desarrollo:
 
-**Binance Pay ID: `1140153333`**
+**Binance Pay ID: `1165745950`**
 Pasos: abre Binance → Pagar → Buscar → pegá el Pay ID.
 
 **Cripto directo — BSC BEP20 (Binance Smart Chain):**
-`0x0a9a0d8d816ede885d1d4a5c94369a72ef86b3c1`
+`0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08`
 Compatible con BNB, USDT, USDC y cualquier token BEP20.
 
 ---
