@@ -1,202 +1,229 @@
 # PhoneOptimizer
 
-**Desarrollado por Enmanuel Gil**
-Versión 1.5.0 | Android 8.0+ (API 26) | Sin dependencias externas
+**Desarrollado por Enmanuel Gil · OptiSuite**
+Versión 1.7.0 | Android 8.0+ (API 26) | Sin root | Sin anuncios | Gratis
 
-Aplicación Android de optimización avanzada de rendimiento y temperatura. Analiza, detecta y corrige automáticamente los problemas de sobrecalentamiento y lentitud del dispositivo en tiempo real.
+PhoneOptimizer muestra con claridad el estado real de tu teléfono Android (memoria, almacenamiento, temperatura, batería) y te da recomendaciones concretas cuando algo necesita atención. Solo cambia ajustes del sistema que se pueden comprobar y deshacer, y siempre te dice qué hizo.
+
+La app no borra datos ni archivos, no tiene permiso de internet y no hace nada automático sin que lo actives tú.
 
 ---
 
-## Características
+## Qué hace
 
-### Panel de Control en Tiempo Real
-- Métricas circulares animadas: CPU, RAM, Temperatura
-- Estado térmico con alertas visuales (Normal → Tibio → Caliente → Crítico → Emergencia)
-- Uso de almacenamiento y memoria virtual (Swap)
-- Contador de procesos activos en el sistema
+### Panel
+- RAM en uso y RAM disponible
+- Almacenamiento usado y libre
+- Temperatura de la batería
+- Temperatura del procesador, si el fabricante permite leerla
+- Nivel de batería y estado de carga
+- Tiempo sin reiniciar (horas o días)
+- Memoria comprimida (swap)
+- Estado térmico del sistema (Android 10 o superior)
 
-### Perfiles de Optimización
-| Perfil | Uso recomendado |
-|--------|----------------|
-| **Recomendado** | Uso diario — balance rendimiento/batería |
-| **Rendimiento** | Juegos o apps exigentes |
-| **Ahorro de Batería** | Extender duración al máximo |
-| **Protección Térmica** | Corregir sobrecalentamiento activo |
-| **Personalizado** | Configuración manual de cada ajuste |
+Incluye una nota que explica que **tener la RAM casi llena es normal en Android**: el sistema la usa para abrir las apps más rápido y la libera solo cuando hace falta.
 
-### Optimizaciones aplicadas
-- Detener procesos en segundo plano (RAM)
-- Reducir animaciones del sistema (0.5x)
-- Restringir datos en segundo plano por app
-- Desactivar WiFi scan pasivo y BLE scan
-- Pausar sincronización automática de Google
-- Activar modo Doze profundo (ahorro energético)
-- Garbage Collection y trim de memoria
-- Limpiar caché DNS del sistema
-- Reiniciar cuota de tareas diferidas (JobScheduler)
+### Recomendaciones automáticas
+El Panel muestra avisos solo cuando detecta algo concreto:
 
-### Bloqueo de Anuncios — DNS Privado
+| Situación | Qué te propone |
+|-----------|----------------|
+| Almacenamiento al 80 % o más (aviso más fuerte al 90 %) | Botón para abrir los Ajustes de almacenamiento |
+| 7 días o más sin reiniciar | Instrucciones para reiniciar |
+| Teléfono caliente, o caliente mientras carga | Consejos concretos y botón a las opciones de ahorro de batería |
+| Salud de la batería mala | Aviso sobre el estado de la batería |
+| Batería baja | Aviso para cargar |
 
-PhoneOptimizer incluye un **filtro de anuncios a nivel de sistema** que no requiere instalar ninguna app adicional. Funciona configurando el DNS privado del dispositivo al servidor de AdGuard.
+### Pestaña Optimizar
+Los perfiles cambian **solo ajustes reales del sistema** y necesitan el [modo avanzado](#modo-avanzado-opcional):
 
-**¿Cómo funciona?**
-Cuando activás el toggle en Ajustes → "Bloquear anuncios del sistema", la app ejecuta:
-```
-Settings.Global → private_dns_mode = "hostname"
-Settings.Global → private_dns_specifier = "dns.adguard.com"
-```
-El sistema operativo redirige **todas las consultas DNS** de todas las apps a través del servidor de AdGuard, que filtra dominios de anuncios y rastreadores conocidos antes de que lleguen al dispositivo.
+| Perfil | Qué cambia |
+|--------|-----------|
+| **Recomendado** | Animaciones a 0.5x |
+| **Máxima agilidad** | Sin animaciones |
+| **Ahorro de batería** | Animaciones a 0.5x y sin búsqueda de redes WiFi/Bluetooth cuando el WiFi está apagado |
 
-**¿Qué bloquea?**
-- Anuncios en browsers (Chrome, Firefox, Samsung Internet)
-- Anuncios en apps (YouTube, apps de noticias, juegos)
-- Rastreadores de datos de terceros (Meta Pixel, Google Analytics, etc.)
-- Dominios de malware conocidos
+Cada cambio se comprueba después de aplicarlo, y la app guarda el valor que tenías antes. El botón **"Restaurar animaciones y ajustes originales"** deja todo como estaba.
 
-**Requisitos:**
-- Permisos avanzados activos (comando ADB)
-- Conexión a internet (para que el DNS resuelva consultas legítimas)
+**Cerrar apps en segundo plano (solo Android 13 o anterior):** en esas versiones aparece un botón que pide al sistema cerrar las apps en segundo plano. Algunos fabricantes ignoran esa petición. Desde Android 14, Google no permite que ninguna app cierre otras apps (está en su documentación oficial), por eso en Android 14 o superior esta opción no aparece.
 
-**Para desactivar:** vuelve a tocar el toggle. La app restaura el modo DNS por defecto (`opportunistic`).
+### Pestaña Apps
+- Tiempo en pantalla de cada app en las últimas 24 horas. Necesita el permiso **"Acceso a datos de uso"**, que concedes tú desde los ajustes de Android.
+- Al tocar una app se abre su ficha de Android, donde puedes forzar la detención, borrar su caché, restringir su uso de batería o desinstalarla.
+- Historial de los perfiles que has aplicado.
 
-**Privacidad del servidor DNS:** AdGuard no registra consultas DNS. Política oficial en: https://adguard-dns.io/es/privacy.html
+### Ajustes
 
-> **Alternativa manual** (sin la app): Ajustes → Conexiones → Más ajustes de conexión → DNS privado → Hostname: `dns.adguard.com`
+**Monitor de temperatura** (apagado por defecto)
+- Revisa la temperatura cada minuto, solo mientras la pantalla está encendida.
+- Si la batería pasa de 42 °C, te avisa con consejos.
+- Mientras está activo muestra una notificación fija discreta.
+- No hace nada automático: solo avisa.
 
-### Panel de Aplicaciones (Top Apps)
+**Revisión automática** (apagada por defecto)
+- Puedes elegir cada 12 horas, cada día o cada 3 días.
+- Solo te notifica si encuentra almacenamiento casi lleno, muchos días sin reiniciar o problemas de batería.
+- No cierra apps ni cambia nada.
 
-La pestaña **Apps** muestra en tiempo real cuáles apps están consumiendo más RAM, usando dos métodos combinados:
-1. `ActivityManager.getRunningAppProcesses()` — API estándar de Android
-2. Lectura directa de `/proc/<pid>/status` (VmRSS) — cubre Android 12+ donde la API está restringida
+**Bloqueo de anuncios con DNS privado** (necesita el modo avanzado)
+- Configura el DNS privado de Android con el servidor de AdGuard (`dns.adguard-dns.com`), que filtra muchos dominios de anuncios y rastreadores en navegadores y apps.
+- **No quita los anuncios de YouTube.**
+- Mientras está activo, las consultas DNS del teléfono pasan por AdGuard. Política de privacidad de AdGuard: https://adguard-dns.io/es/privacy.html
+- En algunas redes (hoteles, empresas, wifi con página de inicio de sesión) puede dejarte sin internet. Si pasa, desactívalo con el mismo interruptor.
+- Al desactivarlo, la app devuelve el DNS que tenías antes.
 
-Cada app muestra su consumo en MB con barra de progreso coloreada:
-- 🟢 Bajo consumo (< 150 MB)
-- 🟠 Consumo moderado (150–300 MB)
-- 🔴 Alto consumo (> 300 MB)
+---
 
-### Monitor Térmico en Background
-- Monitoreo cada 10 segundos
-- Notificación persistente con temperatura en tiempo real
-- Alerta automática al superar 45°C
-- Auto-optimización al detectar temperatura severa
-- Se inicia automáticamente al encender el dispositivo
+## Lo que ninguna app puede hacer sin root
+
+Para que no haya confusiones, esto **no lo hace PhoneOptimizer ni ninguna otra app sin root**, aunque algunas lo prometan:
+
+- Cerrar otras apps en Android 14 o superior
+- Borrar la caché de otras apps (cada app se limpia desde su propia ficha en Ajustes)
+- "Enfriar" el procesador
+- Aumentar la memoria RAM
 
 ---
 
 ## Instalación
 
-### Requisitos mínimos
+### Requisitos
 - Android 8.0 (API 26) o superior
-- 5 MB de espacio libre
-- **No requiere root**
-- **No requiere apps de terceros**
+- No requiere root
+- No requiere otras apps
 
-### Compatibilidad con Tablets
+### Pasos
+1. Descarga el APK de PhoneOptimizer 1.7.0 desde https://optisuite.app
+2. En el teléfono permite instalar apps de origen desconocido (Android te lo pedirá al abrir el archivo).
+3. Abre el APK desde el administrador de archivos y toca **"Instalar"**.
+4. Abre la app.
 
-PhoneOptimizer detecta automáticamente si se está ejecutando en una tablet y adapta su interfaz:
+El identificador de la app es `com.enmanuelgil.optimizer`, así que **se instala encima de versiones anteriores** sin perder nada.
 
-| Dispositivo | Navegación | Diseño |
-|-------------|-----------|--------|
-| **Teléfono** | Barra inferior | Pantalla completa vertical |
-| **Tablet / pantalla grande** | Rail lateral izquierdo | Aprovecha el ancho extra |
+En Android 13 o superior, la app te pedirá permiso para mostrar notificaciones. Solo lo necesita si activas el Monitor de temperatura o la Revisión automática.
 
-No hace falta configurar nada — la app se adapta sola al tamaño de pantalla. Funciona en tablets Samsung, Xiaomi Pad, Lenovo, Huawei MatePad y cualquier Android con pantalla mediana o grande.
-
-### Pasos de instalación
-1. Descarga `PhoneOptimizer-v1.1.0.apk`
-2. En el teléfono: **Ajustes → Seguridad → Instalar apps de origen desconocido → Activar**
-3. Abre el archivo APK desde el administrador de archivos
-4. Toca "Instalar"
-5. Abre la app
-
-**La app funciona inmediatamente** — libera RAM y optimiza procesos sin ninguna configuración extra.
+El Panel, las recomendaciones y la pestaña Apps funcionan sin configurar nada más. Los perfiles de la pestaña Optimizar y el bloqueo de anuncios necesitan el modo avanzado.
 
 ---
 
-## Optimización Avanzada (Opcional)
+## Modo avanzado (opcional)
 
-Para desbloquear animaciones, WiFi scan, Doze y restricción de datos, activá los permisos avanzados **una sola vez**. Hay dos métodos:
+Los perfiles y el bloqueo de anuncios cambian ajustes del sistema, y para eso Android exige un permiso especial (`WRITE_SECURE_SETTINGS`) que solo se puede conceder **una vez desde un PC**. No hace falta root.
 
----
+### Método 1 — Archivo automático (recomendado)
 
-### Método 1 — Autoinstalador (recomendado para la mayoría de usuarios)
+Usa el archivo `Activar_Optimizacion_Avanzada.bat` incluido con la app.
 
-Descargá el archivo `Activar_Optimizacion_Avanzada.bat` desde la sección [Releases](https://github.com/EnMaNueL-G/PhoneOptimizer/releases).
-
-**¿Qué hace el .bat?**
-- Busca ADB automáticamente en el PC
-- Si no lo encuentra, lo descarga de los servidores oficiales de Google
-- Espera a que conectes el teléfono con USB
-- Detecta automáticamente si el dispositivo es MIUI V14 (bloqueado por el fabricante)
-- Ejecuta el comando de activación y muestra el resultado en español claro
+**Qué hace:**
+- Busca ADB en el PC y, si no lo encuentra, lo descarga de los servidores oficiales de Google.
+- Si hay varios teléfonos conectados, te pregunta cuál usar.
+- Concede el permiso y comprueba que quedó concedido.
 
 **Pasos:**
-1. Descargá `Activar_Optimizacion_Avanzada.bat`
-2. Doble clic para ejecutarlo
-3. Activá la depuración USB en el teléfono (ver instrucciones abajo)
-4. Conectá el teléfono al PC con cable USB
-5. En el teléfono, tocá **"Permitir"** cuando aparezca el mensaje de depuración USB
-6. Esperá el mensaje de confirmación ✓
+1. Activa la depuración USB en el teléfono (ver abajo).
+2. Conecta el teléfono al PC con un cable USB.
+3. Haz doble clic en `Activar_Optimizacion_Avanzada.bat`.
+4. En el teléfono, toca **"Permitir"** cuando aparezca el aviso de depuración USB.
+5. Espera el mensaje de confirmación.
 
-#### Cómo activar la Depuración USB (paso a paso)
+#### Cómo activar la depuración USB
 
-> Si ya la tenés activa, saltate este paso.
+Si ya la tienes activa, puedes pasar al siguiente paso.
 
-**Android estándar (Samsung, Motorola, Pixel, OnePlus):**
-1. Abrí **Ajustes** → **Acerca del teléfono**
-2. Tocá **"Número de compilación"** 7 veces seguidas hasta ver "Ya eres desarrollador"
-3. Volvé a **Ajustes** → **Opciones de desarrollador**
-4. Activá el toggle principal (arriba de todo)
-5. Buscá **"Depuración USB"** y activala
-6. Conectá el teléfono al PC — aparecerá un popup: tocá **"Permitir"**
+**Samsung, Motorola, Pixel, OnePlus y la mayoría de marcas:**
+1. Abre **Ajustes → Acerca del teléfono** (en Samsung: **Información de software**).
+2. Toca **"Número de compilación"** 7 veces seguidas hasta ver un mensaje de que ya eres desarrollador.
+3. Vuelve a **Ajustes → Opciones de desarrollador**.
+4. Activa **"Depuración USB"**.
+5. Al conectar el teléfono al PC aparecerá un aviso: toca **"Permitir"**.
 
-**Xiaomi (MIUI / HyperOS):**
-1. **Ajustes** → **Mi teléfono** → tocá **"Versión de MIUI"** 7 veces
-2. Volvé a **Ajustes** → **Ajustes adicionales** → **Opciones de desarrollador**
-3. Activá **"Depuración USB"**
+**Xiaomi, Redmi y POCO (MIUI / HyperOS):**
+1. **Ajustes → Sobre el teléfono** → toca **"Versión de MIUI"** o **"Versión de HyperOS"** 7 veces.
+2. Ve a **Ajustes → Ajustes adicionales → Opciones de desarrollador**.
+3. Activa **"Depuración USB"**.
+4. Activa además **"Depuración USB (ajustes de seguridad)"**. Sin esta opción, Xiaomi no deja conceder el permiso.
 
-**¿No aparece el popup en el teléfono?**
-Desconectá y reconectá el cable — asegurate de que el modo de conexión sea **"Transferencia de archivos (MTP)"** y no solo "Carga".
+**¿No aparece el aviso en el teléfono?**
+Desconecta y vuelve a conectar el cable. Comprueba que el modo USB sea **"Transferencia de archivos"** y no solo "Carga".
 
----
+### Método 2 — Comando ADB manual
 
-### Método 2 — Comando ADB manual (para usuarios avanzados)
-
-Si ya tenés ADB instalado y preferís hacerlo directamente:
-
-#### Requisitos
-- PC con ADB instalado (Android SDK Platform Tools)
-- Cable USB + depuración USB activa en el teléfono
-
-#### Comando único
-Con el teléfono conectado al PC:
+Si ya tienes ADB instalado, con el teléfono conectado:
 
 ```bash
 adb shell pm grant com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS
 ```
 
-**Este permiso es permanente** — no se pierde al reiniciar el teléfono.
+El permiso se mantiene aunque reinicies el teléfono.
+
+### Quitar el modo avanzado
+
+Antes de quitarlo, usa **"Restaurar animaciones y ajustes originales"** y desactiva el bloqueo de anuncios si lo tenías activo. Después:
+
+```bash
+adb shell pm revoke com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS
+```
 
 ---
 
-### Dispositivos compatibles con optimización avanzada
-- Samsung Galaxy (todos los modelos) ✅
-- Xiaomi con MIUI estándar ✅
-- Xiaomi con MIUI V14 / HyperOS ⚠️ *(pm grant bloqueado por el fabricante)*
-- Motorola ✅
-- Google Pixel ✅
-- OnePlus / realme ✅
+## Privacidad
 
-> **Nota MIUI V14:** Xiaomi con HyperOS bloquea `pm grant` desde ADB.
-> La optimización básica (RAM + procesos) funciona igual sin el comando.
+- La app **no tiene permiso de internet**: no puede enviar nada a ningún sitio.
+- Sin anuncios y sin cuentas.
+- No borra datos ni archivos (fotos, documentos, contactos).
+- Solo lee métricas del sistema (memoria, almacenamiento, temperatura, batería) y, si lo concedes, el tiempo de uso de las apps.
+- Si activas el bloqueo de anuncios, las consultas DNS del teléfono pasan por el servidor de AdGuard (ver arriba).
+
+---
+
+## Permisos
+
+| Permiso | Para qué | Sin él |
+|---------|----------|--------|
+| `PACKAGE_USAGE_STATS` *(lo concedes tú en Ajustes)* | Tiempo en pantalla por app en la pestaña Apps | La pestaña Apps no muestra el uso |
+| `QUERY_ALL_PACKAGES` | Mostrar el nombre de las apps en la pestaña Apps | — |
+| `KILL_BACKGROUND_PROCESSES` | "Cerrar apps en segundo plano" (solo Android 13 o anterior) | Esa opción no funciona |
+| `POST_NOTIFICATIONS` | Avisos del Monitor de temperatura y de la Revisión automática (Android 13+) | Sin avisos |
+| `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Monitor de temperatura mientras está activado | Sin monitor |
+| `RECEIVE_BOOT_COMPLETED` | Retomar el monitor o la revisión tras reiniciar, **solo si los activaste** | Hay que abrir la app tras reiniciar |
+| `WRITE_SECURE_SETTINGS` *(opcional, desde PC)* | Perfiles y bloqueo de anuncios | Solo Panel, recomendaciones y Apps |
+
+---
+
+## Novedades en 1.7.0
+
+- Quitadas las acciones que fallaban y aun así se mostraban como hechas.
+- El monitor de temperatura y la revisión automática ya no se encienden solos y gastan mucha menos batería.
+- Nuevo Panel con recomendaciones automáticas.
+- Pestaña Apps con el tiempo de uso real de cada app.
+- Botón para restaurar las animaciones y los ajustes originales.
+- Permiso de notificaciones en Android 13 o superior.
+- El bloqueo de anuncios devuelve tu DNS anterior al desactivarlo.
+
+---
+
+## Resolución de problemas
+
+### No llegan las notificaciones
+- Comprueba que concediste el permiso de notificaciones: **Ajustes → Aplicaciones → PhoneOptimizer → Notificaciones**.
+
+### El monitor de temperatura se detiene solo (Samsung, Xiaomi y otros)
+- Samsung: **Ajustes → Aplicaciones → PhoneOptimizer → Batería → Sin restricciones**.
+- Xiaomi: **Ajustes → Apps → PhoneOptimizer → Ahorro de batería → Sin restricciones**, y activa el inicio automático.
+
+### Sin internet después de activar el bloqueo de anuncios
+- Desactiva el interruptor de bloqueo de anuncios en Ajustes de la app. Se restaura el DNS que tenías antes.
+
+### El archivo .bat dice que no se pudo conceder el permiso
+- Revisa que la depuración USB esté activa y que tocaste "Permitir" en el teléfono.
+- En Xiaomi/Redmi/POCO, activa también "Depuración USB (ajustes de seguridad)".
 
 ---
 
 ## Compilar desde el código fuente
 
 ### Requisitos
-- Android Studio Hedgehog (2023.1.1) o superior
-- JDK 17 (incluido en Android Studio)
+- Android Studio con JDK 17
 - Android SDK API 34
 
 ### Compilar APK debug
@@ -206,125 +233,41 @@ gradlew.bat assembleDebug
 # APK en: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Variables de entorno necesarias
-```
-JAVA_HOME = C:\Program Files\Android\Android Studio\jbr
-ANDROID_HOME = C:\Users\<usuario>\AppData\Local\Android\Sdk
-```
-
----
-
-## Errores conocidos por fabricante
-
-### ❌ Xiaomi MIUI V14 / HyperOS — el comando ADB falla
-
-**Síntoma:** al ejecutar el comando de activación aparece:
-```
-Exception: grantRuntimePermission: Neither user 2000 nor current process
-has android.permission.GRANT_RUNTIME_PERMISSIONS.
-```
-
-**Causa:** Xiaomi bloquea en MIUI V14 y HyperOS la capacidad de que ADB shell otorgue permisos avanzados. No es un fallo de la app ni del comando — es una restricción impuesta por el fabricante.
-
-**Impacto:** las funciones avanzadas (animaciones, WiFi scan, Doze, sync) no se pueden activar en estos modelos. La optimización básica (RAM, procesos, GC) funciona sin ningún problema.
-
-**No tiene solución** sin root o sin cambiar la ROM del dispositivo.
-
-**Dispositivos confirmados SIN este problema:**
-- Samsung Galaxy (todos los modelos, Android 8–15) ✅
-- Motorola ✅
-- Google Pixel ✅
-- OnePlus / realme ✅
-- Xiaomi con MIUI estándar (versiones anteriores a V14) ✅
-
----
-
-## Resolución de problemas
-
-### La app se cierra al abrir (crash)
-- **Causa en Android 14+:** El servicio no tiene permiso para `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`
-- **Solución:** Corregido en v1.0.0 — usa `dataSync` compatible con todas las versiones
-
-### Las notificaciones no aparecen (Samsung)
-- Ve a **Ajustes → Aplicaciones → PhoneOptimizer → Notificaciones → Activar todas**
-
-### El servicio de monitor se detiene solo (Samsung/Xiaomi)
-- **Ajustes → Mantenimiento del dispositivo/Batería → PhoneOptimizer → Sin restricciones**
-- En Xiaomi: Ajustes → Apps → PhoneOptimizer → Batería → Sin restricciones → Activar inicio automático
-
----
-
-## Arquitectura del proyecto
+### Estructura del proyecto
 
 ```
 PhoneOptimizer/
 ├── app/src/main/java/com/enmanuelgil/optimizer/
-│   ├── MainActivity.kt              — Actividad principal + navegación
-│   ├── OptimizerApp.kt              — Application class
+│   ├── MainActivity.kt
 │   ├── core/
-│   │   ├── SystemMonitor.kt         — Lectura de CPU, RAM, temperatura, batería
-│   │   ├── OptimizationEngine.kt    — Motor de todas las optimizaciones
-│   │   └── PrivilegedHelper.kt      — Acceso a Settings.Global + shell exec
-│   ├── model/
-│   │   ├── DeviceStats.kt           — Modelo de métricas del dispositivo
-│   │   └── OptimizationProfile.kt   — Perfiles de configuración
+│   │   ├── SystemMonitor.kt         — Lectura de RAM, almacenamiento, temperatura, batería
+│   │   ├── HealthAdvisor.kt         — Recomendaciones del Panel
+│   │   ├── OptimizationEngine.kt    — Aplicar y restaurar perfiles
+│   │   ├── PrivilegedHelper.kt      — Acceso a ajustes del sistema (modo avanzado)
+│   │   ├── AdBlockManager.kt        — DNS privado de AdGuard
+│   │   ├── AppUsageMonitor.kt       — Tiempo de uso por app
+│   │   └── HistoryManager.kt        — Historial de perfiles aplicados
+│   ├── model/                       — DeviceStats, OptimizationProfile, OptimizationRecord
 │   ├── service/
-│   │   ├── ThermalMonitorService.kt — Servicio foreground de monitoreo
-│   │   └── BootReceiver.kt          — Auto-inicio al encender
-│   ├── viewmodel/
-│   │   └── MainViewModel.kt         — Lógica de negocio y estado UI
+│   │   ├── ThermalMonitorService.kt — Monitor de temperatura
+│   │   ├── AutoMaintenance.kt       — Revisión automática
+│   │   └── BootReceiver.kt          — Retomar tras reiniciar (si estaba activado)
+│   ├── viewmodel/MainViewModel.kt
 │   └── ui/
-│       ├── theme/Theme.kt           — Tema oscuro personalizado
-│       └── screens/
-│           ├── DashboardScreen.kt   — Panel de métricas en tiempo real
-│           ├── OptimizeScreen.kt    — Perfiles y botón de optimización
-│           └── SettingsScreen.kt    — Configuración y comando ADB
-├── gradle.properties                — AndroidX, JVM config
-└── README.md                        — Este archivo
+│       ├── theme/Theme.kt
+│       └── screens/                 — Dashboard, Optimize, Apps, Settings
+├── Activar_Optimizacion_Avanzada.bat
+└── README.md
 ```
 
 ---
 
-## Compatibilidad probada
+## Apoya el proyecto
 
-| Dispositivo | Android | Básico | Avanzado |
-|-------------|---------|--------|----------|
-| Samsung Galaxy S21 | Android 15 (API 35) | ✅ | ✅ |
-| Samsung Galaxy J7 Prime | Android 8.1 (API 27) | ✅ | ✅ |
-| Xiaomi Redmi Note 12 | Android 13 (API 33) | ✅ | ⚠️ MIUI V14 |
-| Xiaomi Redmi Note 12 | Android 14 (API 34) | ✅ | ✅ |
-
----
-
-## Seguridad y Privacidad
-
-- **No recopila ningún dato personal**
-- **No requiere conexión a internet**
-- **No modifica archivos de usuario** (fotos, documentos, contactos)
-- **Sin dependencias de terceros** — 100% APIs nativas de Android
-- Solo accede a métricas del sistema (CPU, RAM, temperatura, batería)
-
----
-
-## Permisos
-
-| Permiso | Por qué | Sin él |
-|---------|---------|--------|
-| `KILL_BACKGROUND_PROCESSES` | Liberar RAM | Funciones básicas limitadas |
-| `FOREGROUND_SERVICE` | Monitor en background | Sin monitoreo continuo |
-| `FOREGROUND_SERVICE_DATA_SYNC` | Tipo de servicio Android 14+ | Crash en Android 14+ |
-| `POST_NOTIFICATIONS` | Alertas de temperatura | Sin alertas |
-| `RECEIVE_BOOT_COMPLETED` | Auto-inicio | Hay que abrir la app manualmente |
-| `WRITE_SECURE_SETTINGS` *(ADB, opcional)* | Animaciones, WiFi scan, Doze | Optimización básica únicamente |
-
----
-
-## Apoya el Proyecto
-
-PhoneOptimizer es **gratuita, sin anuncios y de código abierto**. Si mejoró el rendimiento de tu dispositivo, podés apoyar su desarrollo:
+PhoneOptimizer es **gratuita y sin anuncios**. Si te resulta útil, puedes apoyar su desarrollo:
 
 **Binance Pay ID: `1165745950`**
-Pasos: abre Binance → Pagar → Buscar → pegá el Pay ID.
+Pasos: abre Binance → Pagar → Buscar → pega el Pay ID.
 
 **Cripto directo — BSC BEP20 (Binance Smart Chain):**
 `0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08`
@@ -332,12 +275,13 @@ Compatible con BNB, USDT, USDC y cualquier token BEP20.
 
 ---
 
-## Créditos
+## Contacto y créditos
 
-**Desarrollado por:** Enmanuel Gil
-**UI:** Jetpack Compose con Material Design 3 — tema oscuro personalizado
-**Compatibilidad:** Android 8.0 — Android 15
+**Desarrollado por:** Enmanuel Gil · OptiSuite
+**Web:** https://optisuite.app
+**Soporte:** support@optisuite.app
+**UI:** Jetpack Compose con Material Design 3
 
 ---
 
-*PhoneOptimizer v1.5.0 — Sin dependencias, sin compromisos*
+*PhoneOptimizer v1.7.0 — Enmanuel Gil · OptiSuite*

@@ -1,80 +1,65 @@
-# PhoneOptimizer — Descripción para compartir
+# PhoneOptimizer 1.7.0 — Descripción
 
-## Texto corto para grupos (WhatsApp / Telegram)
-
----
-
-🔥 **¿Tu Android se calienta o va lento?**
-
-Desarrollé una app que lo soluciona automáticamente.
-
-**Resultados reales probados:**
-✅ Samsung S21: temperatura bajó de **53°C a 36°C**
-✅ RAM liberada: hasta **+500 MB**
-✅ Crashes corregidos en Samsung J7 Prime
-✅ Almacenamiento: **+1.4 GB liberados** automáticamente
-✅ Probado en Android 8 hasta Android 15
-
-**¿Qué hace?**
-- Detecta apps que calientan el teléfono en segundo plano
-- Las detiene automáticamente
-- Limpia caché de todas las apps
-- Reduce animaciones para más fluidez
-- Monitor térmico con alertas en tiempo real
-- 5 perfiles: Recomendado / Rendimiento / Ahorro Batería / Protección Térmica / Personalizado
-
-**Sin publicidad. Sin datos recopilados. 100% gratuita.**
-
-📲 Descarga aquí → https://github.com/EnMaNueL-G/PhoneOptimizer/releases/download/v1.5.0/PhoneOptimizer-v1.5.0.apk
-
-Desarrollado por Enmanuel Gil
-
-Si te fue útil, puedes apoyar el proyecto:
-💛 Binance Pay ID: **1165745950**
+## Texto corto (WhatsApp / Telegram)
 
 ---
 
-## Texto largo para publicaciones (Facebook / foros)
+**PhoneOptimizer — el estado real de tu Android, sin trucos**
+
+Te muestra de un vistazo la memoria, el almacenamiento, la temperatura y la batería de tu teléfono, y te avisa con consejos concretos cuando algo necesita atención.
+
+- Panel con RAM, almacenamiento, temperatura, batería y días sin reiniciar
+- Recomendaciones: almacenamiento casi lleno, teléfono caliente, batería en mal estado, reinicio pendiente
+- Tiempo de uso de cada app en las últimas 24 horas
+- Perfiles de animaciones y ahorro de batería que se pueden deshacer con un botón
+- Bloqueo de anuncios opcional con DNS de AdGuard (no quita los de YouTube)
+
+Gratis, sin anuncios, sin root y sin permiso de internet. No borra tus datos.
+
+Descarga: https://optisuite.app
+
+Enmanuel Gil · OptiSuite
 
 ---
 
-🚀 **PhoneOptimizer v1.5.0 — Optimización completa para Android**
+## Texto largo (Facebook / foros / tienda de apps)
 
-¿Cansado de que tu teléfono se caliente, vaya lento o las apps se cierren solas?
+---
 
-Desarrollé esta aplicación después de analizar en profundidad los problemas reales de varios dispositivos Android. Los resultados hablan solos:
+**PhoneOptimizer 1.7.0**
 
-📊 **Resultados medidos en dispositivos reales:**
+PhoneOptimizer te dice con honestidad cómo está tu teléfono y qué puedes hacer para que funcione mejor. No promete milagros: solo hace lo que Android realmente permite.
 
-| Dispositivo | Problema | Resultado |
-|-------------|----------|-----------|
-| Samsung Galaxy S21 | 53°C en reposo | Reducido a **36°C (-17°C)** |
-| Samsung J7 Prime | Apps cerrándose solas | **Crashes corregidos** |
-| Xiaomi Redmi Note 12 | RAM al límite | **+400 MB liberados** |
-| Xiaomi Android 14 | Lentitud general | **CPU idle de 71% a 97%** |
+**Panel**
+RAM en uso y disponible, almacenamiento usado y libre, temperatura de la batería (y del procesador si el fabricante lo permite), nivel y estado de carga, tiempo sin reiniciar, memoria comprimida y estado térmico del sistema (Android 10+). Incluye una nota que explica por qué tener la RAM casi llena es normal en Android.
 
-🛠 **Funciones principales:**
-• Panel en tiempo real con CPU, RAM y temperatura
-• Optimización con un solo toque
-• 5 perfiles de configuración adaptados a tu uso
-• Monitor térmico en background con alertas automáticas
-• Se activa al encender el teléfono (inicio automático)
-• Compatible con Samsung, Xiaomi, y la mayoría de Android 8+
+**Recomendaciones automáticas**
+Te avisa si el almacenamiento pasa del 80 % o del 90 %, si llevas 7 días o más sin reiniciar, si el teléfono se calienta (también mientras carga), si la salud de la batería es mala o si la batería está baja. Cada aviso trae consejos y un acceso directo al ajuste de Android que corresponde.
 
-🔒 **100% segura:**
-• No recopila ningún dato personal
-• No requiere internet
-• No toca tus fotos, contactos ni archivos
-• Código fuente abierto en GitHub
+**Optimizar**
+Perfiles Recomendado, Máxima agilidad y Ahorro de batería, que cambian las animaciones y la búsqueda de redes WiFi/Bluetooth. Cada cambio se comprueba, se guarda tu valor anterior y puedes volver atrás con "Restaurar animaciones y ajustes originales". Requieren activar el modo avanzado una vez desde un PC (archivo incluido que lo hace por ti).
 
-📲 **Descarga gratuita:** https://github.com/EnMaNueL-G/PhoneOptimizer/releases/download/v1.5.0/PhoneOptimizer-v1.5.0.apk
+**Apps**
+Tiempo en pantalla de cada app en las últimas 24 horas. Al tocar una app se abre su ficha de Android para forzar la detención, borrar su caché, restringir la batería o desinstalarla.
 
-🛠 **Activar funciones premium (una vez, desde PC):**
-Descargá `Activar_Optimizacion_Avanzada.bat` desde GitHub Releases → doble clic → conectá el teléfono → listo. No necesitás saber nada de tecnología.
+**Opcional, apagado por defecto**
+- Monitor de temperatura: avisa con consejos si la batería pasa de 42 °C. Solo revisa con la pantalla encendida.
+- Revisión automática cada 12 h, 1 día o 3 días: solo notifica si encuentra algo; no cambia nada.
+- Bloqueo de anuncios con el DNS privado de AdGuard. No quita los anuncios de YouTube y en algunas redes (hoteles, empresas) puede cortar internet; se desactiva con el mismo interruptor y vuelve tu DNS anterior.
 
-Desarrollado por Enmanuel Gil
-Código fuente: https://github.com/EnMaNueL-G/PhoneOptimizer
+**Lo que ninguna app puede hacer sin root**
+Cerrar otras apps en Android 14 o superior, borrar la caché de otras apps, "enfriar" el procesador o aumentar la RAM. Si una app lo promete, desconfía.
 
-💛 **Apoyar el proyecto — Binance Pay ID: 1165745950**
+**Privacidad**
+Sin permiso de internet, sin anuncios, sin cuentas y sin root. No borra datos ni archivos.
+
+**Requisitos:** Android 8.0 o superior. Se instala encima de versiones anteriores.
+
+**Descarga gratuita:** https://optisuite.app
+**Soporte:** support@optisuite.app
+
+Desarrollado por Enmanuel Gil · OptiSuite
+
+Si te resulta útil, puedes apoyar el proyecto — Binance Pay ID: **1165745950**
 
 ---
