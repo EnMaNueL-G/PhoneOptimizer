@@ -55,10 +55,6 @@
     <string name="settings_adblock_inactive">Inactive</string>
     <string name="settings_monitor_title">Background Thermal Monitor</string>
     <string name="settings_monitor_label">Continuous monitoring</string>
-    <string name="settings_donate_title">Support the Project</string>
-    <string name="settings_donate_question">Was the app useful?</string>
-    <string name="settings_donate_body">PhoneOptimizer is 100% free, ad-free and open source. If it improved your device\'s performance, consider supporting its development with a voluntary contribution.</string>
-    <string name="settings_donate_steps">Open Binance → Pay → Search → Paste Pay ID</string>
     <string name="settings_about_title">About PhoneOptimizer</string>
     <string name="settings_version">Version</string>
     <string name="settings_developer">Developed by</string>

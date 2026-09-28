@@ -60,6 +60,4 @@ Sin permiso de internet, sin anuncios, sin cuentas y sin root. No borra datos ni
 
 Desarrollado por Enmanuel Gil · OptiSuite
 
-Si te resulta útil, puedes apoyar el proyecto — Binance Pay ID: **1165745950**
-
 ---

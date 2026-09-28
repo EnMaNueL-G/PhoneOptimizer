@@ -282,106 +282,6 @@ fun SettingsScreen(
             }
         }
 
-        // Donaciones
-        SectionHeader("Apoya el Proyecto")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardDark),
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, AccentOrange.copy(alpha = 0.35f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(Icons.Default.Favorite, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(22.dp))
-                    Text(
-                        "¿Te fue útil la app?",
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        fontSize = 15.sp
-                    )
-                }
-                Text(
-                    "PhoneOptimizer es 100% gratuita y sin anuncios. " +
-                    "Si te resultó útil, puedes apoyar su desarrollo " +
-                    "con una contribución voluntaria — cada aporte ayuda a seguir mejorando la app.",
-                    fontSize = 13.sp,
-                    color = TextSecondary,
-                    lineHeight = 18.sp
-                )
-                HorizontalDivider(color = TextSecondary.copy(alpha = 0.1f))
-                // — Binance Pay ID —
-                Text("Binance Pay", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AccentOrange)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BackgroundDark)
-                        .border(1.dp, AccentOrange.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Pay ID", fontSize = 11.sp, color = TextSecondary)
-                        Text(
-                            "1165745950",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentOrange
-                        )
-                    }
-                    IconButton(
-                        onClick = { clipboard.setText(AnnotatedString("1165745950")) },
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copiar Pay ID", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
-                Text(
-                    "Abre Binance → Pagar → Buscar → Pegar Pay ID",
-                    fontSize = 11.sp,
-                    color = TextSecondary.copy(alpha = 0.7f)
-                )
-                Spacer(Modifier.height(4.dp))
-                // — BSC BEP20 —
-                Text("Cripto directo — BSC BEP20", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AccentOrange)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BackgroundDark)
-                        .border(1.dp, AccentOrange.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Binance Smart Chain", fontSize = 11.sp, color = TextSecondary)
-                        Text(
-                            "0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentOrange
-                        )
-                    }
-                    IconButton(
-                        onClick = { clipboard.setText(AnnotatedString("0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08")) },
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copiar dirección BSC", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
-                Text(
-                    "Compatible con BNB, USDT, USDC y cualquier token BEP20",
-                    fontSize = 11.sp,
-                    color = TextSecondary.copy(alpha = 0.7f)
-                )
-            }
-        }
-
         // Info de la app
         SectionHeader("Acerca de PhoneOptimizer")
         Card(
@@ -410,7 +310,7 @@ fun SettingsScreen(
                 HorizontalDivider(color = TextSecondary.copy(alpha = 0.1f))
                 Text(
                     "Diagnóstico honesto del teléfono (espacio, batería, temperatura, memoria), consejos " +
-                    "que ayudan de verdad y cierre de apps en segundo plano. No borra datos ni archivos, " +
+                    "que ayudan de verdad y ajustes de agilidad reversibles. No borra datos ni archivos, " +
                     "y todos los ajustes que cambia se pueden restaurar.",
                     fontSize = 12.sp, color = TextSecondary, lineHeight = 17.sp
                 )
