@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val app = application
     private val monitor = SystemMonitor(application)
     private val engine = OptimizationEngine(application)
     private val appUsageMonitor = AppUsageMonitor(application)
-    private val resolver = application.contentResolver
 
     private val _stats = MutableStateFlow(DeviceStats())
     val stats: StateFlow<DeviceStats> = _stats.asStateFlow()
@@ -38,8 +38,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _adBlockEnabled = MutableStateFlow(false)
     val adBlockEnabled: StateFlow<Boolean> = _adBlockEnabled.asStateFlow()
 
-    private val _topApps = MutableStateFlow<List<AppMemoryInfo>>(emptyList())
-    val topApps: StateFlow<List<AppMemoryInfo>> = _topApps.asStateFlow()
+    private val _canRestore = MutableStateFlow(false)
+    val canRestore: StateFlow<Boolean> = _canRestore.asStateFlow()
+
+    private val _topApps = MutableStateFlow<List<AppUsageInfo>>(emptyList())
+    val topApps: StateFlow<List<AppUsageInfo>> = _topApps.asStateFlow()
+
+    private val _hasUsageAccess = MutableStateFlow(false)
+    val hasUsageAccess: StateFlow<Boolean> = _hasUsageAccess.asStateFlow()
 
     private val _isLoadingApps = MutableStateFlow(false)
     val isLoadingApps: StateFlow<Boolean> = _isLoadingApps.asStateFlow()
@@ -47,25 +53,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _optimizationHistory = MutableStateFlow<List<OptimizationRecord>>(emptyList())
     val optimizationHistory: StateFlow<List<OptimizationRecord>> = _optimizationHistory.asStateFlow()
 
+    /** Mensaje corto para mostrar abajo (Snackbar). */
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
     private var monitorJob: Job? = null
 
     init {
-        startMonitoring()
-        checkPrivileges()
+        refreshPermissions()
         loadHistory()
     }
 
+    /** Lecturas cada 3 s SOLO mientras la app está a la vista (MainActivity.onStart/onStop). */
     fun startMonitoring() {
-        monitorJob?.cancel()
+        if (monitorJob?.isActive == true) return
         monitorJob = viewModelScope.launch {
             while (isActive) {
-                try { _stats.value = monitor.getStats() } catch (e: Exception) {}
+                try { _stats.value = monitor.getStats() } catch (_: Exception) {}
                 delay(3_000)
             }
         }
     }
 
-    fun stopMonitoring() { monitorJob?.cancel() }
+    fun stopMonitoring() { monitorJob?.cancel(); monitorJob = null }
 
     fun setProfile(profile: OptimizationProfile) { _selectedProfile.value = profile }
 
@@ -73,23 +83,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_isOptimizing.value) return
         viewModelScope.launch {
             _isOptimizing.value = true
-            _optimizationProgress.value = "Iniciando optimización..."
+            _optimizationProgress.value = "Iniciando..."
             _lastResult.value = null
-            val tempBefore = _stats.value.temperatureBattery
+            val profile = _selectedProfile.value
             try {
-                val result = engine.optimize(_selectedProfile.value, tempBefore) { progress ->
-                    _optimizationProgress.value = progress
-                }
+                val result = engine.optimize(profile) { _optimizationProgress.value = it }
                 _lastResult.value = result
-                val record = OptimizationRecord(
-                    profileName = _selectedProfile.value.displayName,
-                    ramFreedMb = result.ramFreedMb,
-                    appsKilled = result.appsKilled,
-                    temperatureBefore = tempBefore,
-                    actionCount = result.actionsTaken.size
-                )
-                HistoryManager.save(getApplication(), record)
-                loadHistory()
+                if (result.actionsTaken.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        HistoryManager.save(app, OptimizationRecord(
+                            profileName = profile.displayName,
+                            actionCount = result.actionsTaken.count { !it.startsWith("✗") }
+                        ))
+                    }
+                    loadHistory()
+                }
+                _canRestore.value = PrivilegedHelper.hasBackup(app)
             } catch (e: Exception) {
                 _lastResult.value = OptimizationResult(success = false, errorMessage = e.message)
             } finally {
@@ -99,41 +108,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun checkPrivileges() {
-        val granted = PrivilegedHelper.hasWriteSecureSettings(getApplication())
+    /** Volver a leer permisos (al volver de Ajustes de Android). */
+    fun refreshPermissions() {
+        val granted = PrivilegedHelper.hasWriteSecureSettings(app)
         _privilegesStatus.value = if (granted) PrivilegesStatus.GRANTED else PrivilegesStatus.NOT_GRANTED
-        if (granted) _adBlockEnabled.value = AdBlockManager.isEnabled(resolver)
+        _adBlockEnabled.value = granted && AdBlockManager.isEnabled(app)
+        _canRestore.value = PrivilegedHelper.hasBackup(app)
+        val usage = appUsageMonitor.hasUsageAccess()
+        val changed = usage != _hasUsageAccess.value
+        _hasUsageAccess.value = usage
+        if (changed && usage) loadTopApps()
     }
 
     fun toggleAdBlock(enable: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = if (enable) AdBlockManager.enable(resolver) else AdBlockManager.disable(resolver)
-            if (ok) _adBlockEnabled.value = enable
+            val ok = if (enable) AdBlockManager.enable(app) else AdBlockManager.disable(app)
+            _adBlockEnabled.value = AdBlockManager.isEnabled(app)
+            if (!ok) _message.value = "El sistema no aceptó el cambio de DNS"
+            else if (enable) _message.value = "Bloqueo activado. Si alguna red se queda sin internet, desactívalo."
+        }
+    }
+
+    fun restoreSettings() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val (ok, fail) = PrivilegedHelper.restoreAll(app)
+            _canRestore.value = PrivilegedHelper.hasBackup(app)
+            _message.value = when {
+                ok == 0 && fail == 0 -> "No había ajustes que restaurar"
+                fail == 0 -> "Ajustes originales restaurados ($ok)"
+                else -> "Restaurados $ok, fallaron $fail (¿se quitó el permiso?)"
+            }
         }
     }
 
     fun loadTopApps() {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingApps.value = true
+            _hasUsageAccess.value = appUsageMonitor.hasUsageAccess()
             _topApps.value = appUsageMonitor.getTopApps()
             _isLoadingApps.value = false
         }
     }
 
-    fun forceStopApp(packageName: String) {
+    fun openUsageAccess() = appUsageMonitor.openUsageAccessSettings()
+
+    /** Solo Android 13 o anterior (ver OptimizationEngine.canCloseBackgroundApps). */
+    fun closeBackgroundApps() {
         viewModelScope.launch {
-            engine.forceStopApp(packageName)
-            delay(800)
-            loadTopApps()
+            val n = engine.requestCloseBackgroundApps()
+            _message.value = if (n > 0)
+                "Se pidió a Android cerrar tus apps en segundo plano ($n revisadas). Algunos fabricantes lo ignoran."
+            else "No se pudo pedir el cierre"
         }
     }
 
+    fun consumeMessage() { _message.value = null }
+
     fun loadHistory() {
-        _optimizationHistory.value = HistoryManager.load(getApplication())
+        _optimizationHistory.value = HistoryManager.load(app)
     }
 
     fun clearHistory() {
-        HistoryManager.clear(getApplication())
+        HistoryManager.clear(app)
         _optimizationHistory.value = emptyList()
     }
 }

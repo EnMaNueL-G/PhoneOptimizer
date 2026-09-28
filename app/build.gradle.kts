@@ -10,11 +10,13 @@ android {
     compileSdk = 34
 
     defaultConfig {
+        // NO cambiar: es el identificador de las versiones ya publicadas (si cambia, el móvil
+        // la trata como otra app y no se actualiza encima).
         applicationId = "com.enmanuelgil.optimizer"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.6.0"
+        versionCode = 17
+        versionName = "1.7.0"
     }
 
     // Firma de release desde keystore.properties (gitignored).
@@ -53,7 +55,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.11"
     }

@@ -9,57 +9,54 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.*
 import com.enmanuelgil.optimizer.MainActivity
-import com.enmanuelgil.optimizer.core.HistoryManager
-import com.enmanuelgil.optimizer.core.OptimizationEngine
-import com.enmanuelgil.optimizer.model.OptimizationProfile
-import com.enmanuelgil.optimizer.model.OptimizationRecord
+import com.enmanuelgil.optimizer.R
+import com.enmanuelgil.optimizer.core.HealthAdvisor
+import com.enmanuelgil.optimizer.core.SystemMonitor
 import java.util.concurrent.TimeUnit
 
 /**
- * Mantenimiento automático PERIÓDICO del teléfono, sin intervención manual.
+ * Revisión automática periódica del teléfono.
  *
- * Usa WorkManager (sobrevive cierres de app y reinicios) para ejecutar la optimización
- * recomendada cada cierto intervalo. Complementa al ThermalMonitorService (que reacciona
- * en tiempo real al sobrecalentamiento): aquí garantizamos un mantenimiento de fondo
- * constante que mantiene el rendimiento sin que el usuario haga nada.
+ * Solo MIRA y avisa si algo necesita atención (almacenamiento casi lleno, muchos días sin
+ * reiniciar, batería dañada...). No cierra apps ni cambia ajustes por su cuenta: antes lo hacía
+ * cada 6 h sin preguntar y podía cortar una subida de fotos o dejar ajustes cambiados.
  */
 
-// ── Preferencias (persistencia simple) ──────────────────────────────────────
+// ── Preferencias ────────────────────────────────────────────────────────────
 object MaintenancePrefs {
     private const val FILE = "auto_maintenance"
-    private const val K_ENABLED = "enabled"
-    private const val K_INTERVAL = "interval_hours"
+    // Clave nueva: la antigua venía ACTIVADA por defecto; así nadie queda con ella encendida
+    // sin haberlo elegido.
+    private const val K_ENABLED = "checkup_enabled"
+    private const val K_INTERVAL = "checkup_interval_hours"
+    private const val K_LAST_ISSUES = "last_issues"
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    fun isEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(K_ENABLED, true)  // por defecto ACTIVO
-    fun intervalHours(ctx: Context): Int = prefs(ctx).getInt(K_INTERVAL, 6)
+    fun isEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(K_ENABLED, false)
+    fun intervalHours(ctx: Context): Int = prefs(ctx).getInt(K_INTERVAL, 24)
 
     fun setEnabled(ctx: Context, enabled: Boolean) =
         prefs(ctx).edit().putBoolean(K_ENABLED, enabled).apply()
     fun setIntervalHours(ctx: Context, hours: Int) =
         prefs(ctx).edit().putInt(K_INTERVAL, hours).apply()
+
+    /** Para no repetir el mismo aviso en cada revisión. */
+    fun lastIssues(ctx: Context): String = prefs(ctx).getString(K_LAST_ISSUES, "") ?: ""
+    fun setLastIssues(ctx: Context, v: String) = prefs(ctx).edit().putString(K_LAST_ISSUES, v).apply()
 }
 
 // ── Programador ─────────────────────────────────────────────────────────────
 object MaintenanceScheduler {
     private const val WORK_NAME = "auto_maintenance_periodic"
 
-    /** Activa (o reprograma) el mantenimiento periódico cada [hours] horas. */
     fun enable(context: Context, hours: Int) {
-        val safeHours = hours.coerceIn(1, 24).toLong()
+        val safeHours = hours.coerceIn(6, 72).toLong()
         val request = PeriodicWorkRequestBuilder<MaintenanceWorker>(safeHours, TimeUnit.HOURS)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiresBatteryNotLow(false)
-                    .build()
-            )
             .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.MINUTES)
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            request
+            WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request
         )
     }
 
@@ -67,13 +64,10 @@ object MaintenanceScheduler {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
     }
 
-    /** Reaplica el estado guardado (llamar al iniciar la app y tras el arranque del sistema). */
+    /** Reaplica el estado guardado (al abrir la app y tras reiniciar el teléfono). */
     fun applyFromPrefs(context: Context) {
-        if (MaintenancePrefs.isEnabled(context)) {
-            enable(context, MaintenancePrefs.intervalHours(context))
-        } else {
-            disable(context)
-        }
+        if (MaintenancePrefs.isEnabled(context)) enable(context, MaintenancePrefs.intervalHours(context))
+        else disable(context)
     }
 }
 
@@ -85,44 +79,37 @@ class MaintenanceWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            val engine = OptimizationEngine(appContext)
-            val result = engine.optimize(OptimizationProfile.RECOMMENDED)
-            // Registrar en el historial para que el usuario vea el mantenimiento realizado.
-            HistoryManager.save(
-                appContext,
-                OptimizationRecord(
-                    profileName = "Mantenimiento automático",
-                    ramFreedMb = result.ramFreedMb,
-                    appsKilled = result.appsKilled,
-                    temperatureBefore = 0f,
-                    actionCount = result.actionsTaken.size
-                )
-            )
-            notifyDone(result.ramFreedMb, result.appsKilled)
+            val stats = SystemMonitor(appContext).getStats()
+            val issues = HealthAdvisor.check(stats).filter { it.important }
+            val key = issues.joinToString("|") { it.id }
+            if (issues.isNotEmpty() && key != MaintenancePrefs.lastIssues(appContext)) {
+                notify(issues.first().title, issues.joinToString(" · ") { it.title })
+            }
+            MaintenancePrefs.setLastIssues(appContext, key)
             Result.success()
-        } catch (e: Exception) {
-            Result.retry()
+        } catch (_: Exception) {
+            Result.success()   // no reintentar en bucle: la próxima revisión llegará sola
         }
     }
 
-    private fun notifyDone(ramFreedMb: Long, appsKilled: Int) {
+    private fun notify(title: String, text: String) {
         try {
             val nm = appContext.getSystemService(NotificationManager::class.java) ?: return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 nm.createNotificationChannel(
-                    NotificationChannel(CHANNEL, "Mantenimiento automático", NotificationManager.IMPORTANCE_LOW)
-                        .apply { description = "Resumen del mantenimiento periódico" }
+                    NotificationChannel(CHANNEL, "Revisión automática", NotificationManager.IMPORTANCE_DEFAULT)
+                        .apply { description = "Aviso cuando la revisión encuentra algo que mejorar" }
                 )
             }
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            val pi = PendingIntent.getActivity(
+                appContext, 0, Intent(appContext, MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            else PendingIntent.FLAG_UPDATE_CURRENT
-            val pi = PendingIntent.getActivity(appContext, 0, Intent(appContext, MainActivity::class.java), flags)
+            )
             val notif = NotificationCompat.Builder(appContext, CHANNEL)
-                .setSmallIcon(android.R.drawable.ic_menu_manage)
-                .setContentTitle("Mantenimiento automático completado")
-                .setContentText("$appsKilled procesos detenidos · ${ramFreedMb} MB de RAM liberados")
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setSmallIcon(R.drawable.ic_bolt)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText("$text\nToca para ver cómo solucionarlo."))
                 .setContentIntent(pi)
                 .setAutoCancel(true)
                 .build()
@@ -131,7 +118,7 @@ class MaintenanceWorker(
     }
 
     companion object {
-        private const val CHANNEL = "auto_maintenance"
+        private const val CHANNEL = "auto_checkup"
         private const val NOTIF_ID = 1003
     }
 }

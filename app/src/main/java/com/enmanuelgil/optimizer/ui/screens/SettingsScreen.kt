@@ -1,6 +1,20 @@
 package com.enmanuelgil.optimizer.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import androidx.core.content.ContextCompat
+import com.enmanuelgil.optimizer.BuildConfig
+import com.enmanuelgil.optimizer.core.AdBlockManager
+import com.enmanuelgil.optimizer.service.MonitorPrefs
+import com.enmanuelgil.optimizer.service.ThermalMonitorService
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,15 +41,34 @@ import com.enmanuelgil.optimizer.viewmodel.PrivilegesStatus
 fun SettingsScreen(
     privilegesStatus: PrivilegesStatus,
     adBlockEnabled: Boolean,
+    canRestore: Boolean,
     onAdBlockToggle: (Boolean) -> Unit,
-    onStartMonitor: () -> Unit,
-    onStopMonitor: () -> Unit
+    onRestore: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
-    var monitorActive by remember { mutableStateOf(true) }
-    var autoMaintEnabled by remember { mutableStateOf(MaintenancePrefs.isEnabled(context)) }
-    var autoMaintInterval by remember { mutableStateOf(MaintenancePrefs.intervalHours(context)) }
+    val granted = privilegesStatus == PrivilegesStatus.GRANTED
+    var monitorActive by rememberSaveable { mutableStateOf(MonitorPrefs.isEnabled(context)) }
+    var autoMaintEnabled by rememberSaveable { mutableStateOf(MaintenancePrefs.isEnabled(context)) }
+    var autoMaintInterval by rememberSaveable { mutableStateOf(MaintenancePrefs.intervalHours(context)) }
+
+    // Android 13+: las alertas necesitan el permiso de notificaciones
+    fun needsNotifPermission() = Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+    var notifDenied by remember { mutableStateOf(false) }
+    var pendingEnable by remember { mutableStateOf<String?>(null) }
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        notifDenied = !ok
+        when (pendingEnable) {
+            "monitor" -> { MonitorPrefs.setEnabled(context, true); monitorActive = true; ThermalMonitorService.start(context) }
+            "checkup" -> {
+                MaintenancePrefs.setEnabled(context, true); autoMaintEnabled = true
+                MaintenanceScheduler.enable(context, autoMaintInterval)
+            }
+        }
+        pendingEnable = null
+    }
 
     Column(
         modifier = Modifier
@@ -44,142 +77,17 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Configuración", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Ajustes", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
 
-        // Estado de permisos avanzados
-        SectionHeader("Estado de Optimización Avanzada")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardDark),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                when (privilegesStatus) {
-                    PrivilegesStatus.GRANTED -> {
-                        StatusRow(Icons.Default.CheckCircle, "Permisos avanzados activos", AccentGreen)
-                        Text(
-                            "Animaciones, WiFi scan, Doze y sincronización son controlables. " +
-                            "El comando ADB ya fue ejecutado correctamente.",
-                            fontSize = 13.sp, color = TextSecondary
-                        )
-                    }
-                    else -> {
-                        StatusRow(Icons.Default.Warning, "Solo optimización básica activa", AccentOrange)
-                        Text(
-                            "RAM y procesos funcionan sin configuración extra.\n" +
-                            "Para desbloquear animaciones, WiFi scan, Doze y más: " +
-                            "ejecuta el comando de abajo una sola vez desde un PC con ADB.",
-                            fontSize = 13.sp, color = TextSecondary
-                        )
-                    }
-                }
-            }
+        if (notifDenied) {
+            Text(
+                "Sin permiso de notificaciones no verás los avisos. Puedes darlo en Ajustes de Android → Apps → PhoneOptimizer → Notificaciones.",
+                fontSize = 12.sp, color = AccentOrange
+            )
         }
 
-        // Comando ADB de activación
-        SectionHeader("Activación Avanzada — Un Solo Comando ADB")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardDark),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "Conecta el teléfono al PC con USB, abre una terminal y ejecuta:",
-                    fontSize = 13.sp, color = TextSecondary
-                )
-                AdbCommandBox(
-                    label = "Paso único — copiar y ejecutar en PC:",
-                    command = "adb shell pm grant com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS",
-                    onCopy = { clipboard.setText(AnnotatedString(it)) }
-                )
-                Text("Después de ejecutar, cierra y vuelve a abrir la app.", fontSize = 12.sp, color = AccentOrange)
-
-                Divider(color = TextSecondary.copy(alpha = 0.1f))
-
-                // Aviso MIUI
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = AccentOrange,
-                        modifier = Modifier.size(16.dp).padding(top = 1.dp)
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "Xiaomi con MIUI V14 / HyperOS",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AccentOrange
-                        )
-                        Text(
-                            "El fabricante bloquea este comando con el error:\n" +
-                            "\"GRANT_RUNTIME_PERMISSIONS not allowed\"\n\n" +
-                            "No es un fallo de la app — es una restricción de Xiaomi. " +
-                            "La optimización básica (RAM, procesos, GC) funciona igual sin el comando. " +
-                            "Las funciones avanzadas (animaciones, WiFi scan, Doze) no están disponibles en este modelo.",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                        Text(
-                            "Dispositivos confirmados SIN este problema: Samsung Galaxy (todos), Motorola, Google Pixel, OnePlus.",
-                            fontSize = 11.sp,
-                            color = TextSecondary.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Bloqueo de anuncios DNS
-        SectionHeader("Bloqueo de Anuncios — DNS Privado")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardDark),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Bloquear anuncios del sistema", fontWeight = FontWeight.Medium, color = TextPrimary)
-                        Text(
-                            if (adBlockEnabled) "Activo — DNS: dns.adguard.com" else "Inactivo",
-                            fontSize = 12.sp,
-                            color = if (adBlockEnabled) AccentGreen else TextSecondary
-                        )
-                    }
-                    Switch(
-                        checked = adBlockEnabled,
-                        onCheckedChange = onAdBlockToggle,
-                        enabled = privilegesStatus == PrivilegesStatus.GRANTED,
-                        colors = SwitchDefaults.colors(checkedThumbColor = AccentGreen)
-                    )
-                }
-                Text(
-                    "Redirige las consultas DNS al servidor de AdGuard. Bloquea anuncios y rastreadores en todas las apps sin instalar nada extra. Requiere permisos avanzados (ADB).",
-                    fontSize = 12.sp, color = TextSecondary
-                )
-                if (privilegesStatus != PrivilegesStatus.GRANTED) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(14.dp))
-                        Text("Requiere el comando ADB de abajo", fontSize = 11.sp, color = AccentOrange)
-                    }
-                }
-            }
-        }
-
-        // Monitor en background
-        SectionHeader("Monitor Térmico en Background")
+        // Monitor de temperatura
+        SectionHeader("Monitor de temperatura")
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardDark),
@@ -188,91 +96,188 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Monitoreo continuo", fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Text("Avisarme si se calienta", fontWeight = FontWeight.Medium, color = TextPrimary)
                     Text(
-                        "Alerta y optimiza automáticamente al detectar sobrecalentamiento",
+                        "Revisa la temperatura cada minuto con la pantalla encendida y te avisa con consejos " +
+                        "si la batería pasa de ${ThermalMonitorService.BATTERY_ALERT_C.toInt()} °C. Deja un aviso fijo " +
+                        "discreto mientras está activo. Gasto de batería mínimo.",
                         fontSize = 12.sp, color = TextSecondary
                     )
                 }
                 Switch(
                     checked = monitorActive,
-                    onCheckedChange = { active ->
-                        monitorActive = active
-                        if (active) onStartMonitor() else onStopMonitor()
+                    onCheckedChange = { on ->
+                        if (on && needsNotifPermission()) {
+                            pendingEnable = "monitor"
+                            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            monitorActive = on
+                            MonitorPrefs.setEnabled(context, on)
+                            if (on) ThermalMonitorService.start(context) else ThermalMonitorService.stop(context)
+                        }
                     },
-                    colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+                    colors = SwitchDefaults.colors(checkedThumbColor = androidx.compose.ui.graphics.Color.White, checkedTrackColor = PrimaryBlue)
                 )
             }
         }
 
-        // Mantenimiento automático periódico
-        SectionHeader("Mantenimiento Automático")
+        // Revisión automática
+        SectionHeader("Revisión automática")
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardDark),
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, AccentGreen.copy(alpha = 0.35f))
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Optimización periódica automática", fontWeight = FontWeight.Medium, color = TextPrimary)
+                        Text("Revisar el teléfono periódicamente", fontWeight = FontWeight.Medium, color = TextPrimary)
                         Text(
-                            "Mantiene el rendimiento solo: libera RAM y detiene procesos en segundo plano cada cierto tiempo, sin que hagas nada.",
+                            "Te avisa solo si encuentra algo: almacenamiento casi lleno, muchos días sin reiniciar " +
+                            "o problemas de batería. No cierra apps ni cambia nada por su cuenta.",
                             fontSize = 12.sp, color = TextSecondary
                         )
                     }
                     Switch(
                         checked = autoMaintEnabled,
                         onCheckedChange = { on ->
-                            autoMaintEnabled = on
-                            MaintenancePrefs.setEnabled(context, on)
-                            if (on) MaintenanceScheduler.enable(context, autoMaintInterval)
-                            else MaintenanceScheduler.disable(context)
+                            if (on && needsNotifPermission()) {
+                                pendingEnable = "checkup"
+                                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                autoMaintEnabled = on
+                                MaintenancePrefs.setEnabled(context, on)
+                                if (on) MaintenanceScheduler.enable(context, autoMaintInterval)
+                                else MaintenanceScheduler.disable(context)
+                            }
                         },
-                        colors = SwitchDefaults.colors(checkedThumbColor = AccentGreen)
+                        colors = SwitchDefaults.colors(checkedThumbColor = androidx.compose.ui.graphics.Color.White, checkedTrackColor = AccentGreen)
                     )
                 }
                 if (autoMaintEnabled) {
                     Text("Frecuencia", fontSize = 12.sp, color = TextSecondary)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(3, 6, 12, 24).forEach { h ->
+                    Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(12 to "12 h", 24 to "1 día", 72 to "3 días").forEach { (h, label) ->
                             val selected = autoMaintInterval == h
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
                                 color = if (selected) AccentGreen.copy(alpha = 0.18f) else BackgroundDark,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp, if (selected) AccentGreen else TextSecondary.copy(alpha = 0.2f)),
+                                border = BorderStroke(1.dp, if (selected) AccentGreen else TextSecondary.copy(alpha = 0.3f)),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable {
+                                    .heightIn(min = 48.dp)
+                                    .selectable(selected = selected, role = Role.RadioButton) {
                                         autoMaintInterval = h
                                         MaintenancePrefs.setIntervalHours(context, h)
                                         MaintenanceScheduler.enable(context, h)
                                     }
                             ) {
-                                Text(
-                                    "${h}h",
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    color = if (selected) AccentGreen else TextSecondary,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 13.sp
-                                )
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        label,
+                                        color = if (selected) AccentGreen else TextSecondary,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Modo avanzado (permiso por ADB)
+        SectionHeader("Modo avanzado")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardDark),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (granted) {
+                    StatusRow(Icons.Default.CheckCircle, "Modo avanzado activo", AccentGreen)
                     Text(
-                        "Cada ${autoMaintInterval} horas. Funciona en segundo plano aunque cierres la app.",
-                        fontSize = 11.sp, color = AccentGreen.copy(alpha = 0.8f)
+                        "La app puede ajustar las animaciones, la búsqueda WiFi/Bluetooth y el bloqueo de anuncios.",
+                        fontSize = 13.sp, color = TextSecondary
                     )
+                } else {
+                    StatusRow(Icons.Default.Info, "Modo avanzado desactivado", AccentOrange)
+                    Text(
+                        "Permite ajustar animaciones, búsqueda WiFi/Bluetooth y el bloqueo de anuncios. " +
+                        "Se activa una sola vez desde un PC: activa la \"Depuración USB\" en Opciones de " +
+                        "desarrollador, conecta el cable y ejecuta:",
+                        fontSize = 13.sp, color = TextSecondary
+                    )
+                    val cmd = "adb shell pm grant ${context.packageName} android.permission.WRITE_SECURE_SETTINGS"
+                    AdbCommandBox(
+                        label = "Comando (tócalo para copiarlo):",
+                        command = cmd,
+                        onCopy = { clipboard.setText(AnnotatedString(it)) }
+                    )
+                    Text(
+                        "Xiaomi / Redmi / POCO: activa además \"Depuración USB (ajustes de seguridad)\" en " +
+                        "Opciones de desarrollador; si no, el comando da el error " +
+                        "\"GRANT_RUNTIME_PERMISSIONS\".",
+                        fontSize = 12.sp, color = TextSecondary
+                    )
+                    Text(
+                        "Para quitarlo: el mismo comando cambiando \"grant\" por \"revoke\".",
+                        fontSize = 12.sp, color = TextSecondary
+                    )
+                }
+                if (canRestore) {
+                    OutlinedButton(
+                        onClick = onRestore,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Restaurar animaciones y ajustes originales") }
+                }
+            }
+        }
+
+        // Bloqueo de anuncios DNS
+        SectionHeader("Bloqueo de anuncios (DNS privado)")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardDark),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Bloquear anuncios y rastreadores", fontWeight = FontWeight.Medium, color = TextPrimary)
+                        Text(
+                            if (adBlockEnabled) "Activo — ${AdBlockManager.ADBLOCK_DNS}" else "Inactivo",
+                            fontSize = 12.sp,
+                            color = if (adBlockEnabled) AccentGreen else TextSecondary
+                        )
+                    }
+                    Switch(
+                        checked = adBlockEnabled,
+                        onCheckedChange = onAdBlockToggle,
+                        enabled = granted,
+                        colors = SwitchDefaults.colors(checkedThumbColor = androidx.compose.ui.graphics.Color.White, checkedTrackColor = AccentGreen)
+                    )
+                }
+                Text(
+                    "Usa el DNS privado de Android con AdGuard DNS: bloquea muchos anuncios dentro de apps y webs. " +
+                    "No quita los de YouTube. Tus consultas de dominios pasan por AdGuard. Si en alguna red " +
+                    "(hotel, empresa) te quedas sin internet, desactívalo. Al desactivarlo vuelve tu DNS anterior.",
+                    fontSize = 12.sp, color = TextSecondary, lineHeight = 17.sp
+                )
+                if (!granted) {
+                    Text("Requiere el modo avanzado", fontSize = 12.sp, color = AccentOrange)
                 }
             }
         }
@@ -299,14 +304,14 @@ fun SettingsScreen(
                     )
                 }
                 Text(
-                    "PhoneOptimizer es 100% gratuita, sin anuncios y de código abierto. " +
-                    "Si mejoró el rendimiento de tu dispositivo, considera apoyar su desarrollo " +
+                    "PhoneOptimizer es 100% gratuita y sin anuncios. " +
+                    "Si te resultó útil, puedes apoyar su desarrollo " +
                     "con una contribución voluntaria — cada aporte ayuda a seguir mejorando la app.",
                     fontSize = 13.sp,
                     color = TextSecondary,
                     lineHeight = 18.sp
                 )
-                Divider(color = TextSecondary.copy(alpha = 0.1f))
+                HorizontalDivider(color = TextSecondary.copy(alpha = 0.1f))
                 // — Binance Pay ID —
                 Text("Binance Pay", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AccentOrange)
                 Row(
@@ -331,7 +336,6 @@ fun SettingsScreen(
                     }
                     IconButton(
                         onClick = { clipboard.setText(AnnotatedString("1165745950")) },
-                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copiar Pay ID", tint = TextSecondary, modifier = Modifier.size(18.dp))
                     }
@@ -366,7 +370,6 @@ fun SettingsScreen(
                     }
                     IconButton(
                         onClick = { clipboard.setText(AnnotatedString("0xb6f6731a4ea87f8e1fd6f44f48b5bc4204571f08")) },
-                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copiar dirección BSC", tint = TextSecondary, modifier = Modifier.size(18.dp))
                     }
@@ -399,16 +402,16 @@ fun SettingsScreen(
                         Text("Un proyecto OptiSuite · 100% gratis", fontSize = 12.sp, color = AccentGreen)
                     }
                 }
-                Divider(color = TextSecondary.copy(alpha = 0.1f))
-                InfoRow("Versión", "1.6.0")
+                HorizontalDivider(color = TextSecondary.copy(alpha = 0.1f))
+                InfoRow("Versión", BuildConfig.VERSION_NAME)
                 InfoRow("Desarrollado por", "Enmanuel Gil")
                 InfoRow("Compatibilidad", "Android 8.0+ (API 26)")
-                InfoRow("Sin anuncios ni telemetría", "Gratis para siempre · sin root")
-                Divider(color = TextSecondary.copy(alpha = 0.1f))
+                InfoRow("Sin anuncios ni internet", "Gratis · sin root")
+                HorizontalDivider(color = TextSecondary.copy(alpha = 0.1f))
                 Text(
-                    "Optimizador integral para Android: mantiene RAM, CPU y temperatura en óptimo " +
-                    "rendimiento en tiempo real, con mantenimiento automático periódico. No elimina " +
-                    "datos personales ni modifica archivos del usuario.",
+                    "Diagnóstico honesto del teléfono (espacio, batería, temperatura, memoria), consejos " +
+                    "que ayudan de verdad y cierre de apps en segundo plano. No borra datos ni archivos, " +
+                    "y todos los ajustes que cambia se pueden restaurar.",
                     fontSize = 12.sp, color = TextSecondary, lineHeight = 17.sp
                 )
                 // Contacto / web
@@ -434,6 +437,27 @@ fun SettingsScreen(
                     Icon(Icons.Default.Language, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                     Text("optisuite.app", fontSize = 13.sp, color = TextSecondary)
                 }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            try {
+                                ctx2.startActivity(Intent(Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("https://github.com/EnMaNueL-G")))
+                            } catch (_: Exception) {}
+                        }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Code, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                    Text("github.com/EnMaNueL-G", fontSize = 13.sp, color = PrimaryBlue, fontWeight = FontWeight.Medium)
+                }
+                HorizontalDivider(color = TextSecondary.copy(alpha = 0.1f))
+                Text("Enmanuel Gil · OptiSuite", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text("por Enmanuel Gil (EnMaNueL-G)", fontSize = 12.sp, color = TextSecondary)
+                Text("© 2026 OptiSuite", fontSize = 11.sp, color = TextSecondary.copy(alpha = 0.7f))
             }
         }
 
@@ -464,6 +488,7 @@ fun AdbCommandBox(label: String, command: String, onCopy: (String) -> Unit) {
                 .clip(RoundedCornerShape(8.dp))
                 .background(BackgroundDark)
                 .border(1.dp, TextSecondary.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                .clickable { onCopy(command) }
                 .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -471,7 +496,7 @@ fun AdbCommandBox(label: String, command: String, onCopy: (String) -> Unit) {
                 command, fontSize = 11.sp, color = AccentGreen,
                 fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = { onCopy(command) }, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = { onCopy(command) }) {
                 Icon(Icons.Default.ContentCopy, contentDescription = "Copiar", tint = TextSecondary, modifier = Modifier.size(16.dp))
             }
         }

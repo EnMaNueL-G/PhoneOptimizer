@@ -1,4 +1,1 @@
--keep class rikka.shizuku.** { *; }
--keep class com.enmanuelgil.optimizer.** { *; }
 -keepattributes *Annotation*
--dontwarn rikka.**

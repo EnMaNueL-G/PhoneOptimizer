@@ -7,29 +7,31 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
-import android.os.StatFs
 import android.os.PowerManager
+import android.os.StatFs
+import android.os.SystemClock
+import com.enmanuelgil.optimizer.model.BatteryHealth
 import com.enmanuelgil.optimizer.model.DeviceStats
 import com.enmanuelgil.optimizer.model.ThermalStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/**
+ * Lecturas del teléfono que Android permite a una app normal. Lo que el sistema no deja
+ * leer se marca como "no disponible" en vez de inventar un valor.
+ */
 class SystemMonitor(private val context: Context) {
 
     private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    private val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
     private var lastCpuIdle = 0L
     private var lastCpuTotal = 0L
-
-    init {
-        // Pre-warm: store initial values so the first displayed reading
-        // reflects a real interval (next call 3 s later) instead of the average since boot.
-        readRawCpuStats()?.let { (total, idle) ->
-            lastCpuTotal = total
-            lastCpuIdle = idle
-        }
-    }
+    /** null = aún no se sabe; false = el sistema no deja leer /proc/stat (no se reintenta). */
+    private var cpuReadable: Boolean? = null
+    /** Zonas térmicas legibles de CPU (se buscan una vez). */
+    private var cpuZones: List<File>? = null
 
     suspend fun getStats(): DeviceStats = withContext(Dispatchers.IO) {
         val ramInfo = ActivityManager.MemoryInfo()
@@ -37,177 +39,153 @@ class SystemMonitor(private val context: Context) {
 
         val ramTotalMb = ramInfo.totalMem / 1024 / 1024
         val ramAvailMb = ramInfo.availMem / 1024 / 1024
-        val ramUsedMb = ramTotalMb - ramAvailMb
 
         val (swapUsed, swapTotal) = readSwapInfo()
-        val (cpuTemp, batteryTemp, skinTemp) = readTemperatures()
-        val thermalStatus = getThermalStatus(cpuTemp, skinTemp)
-        val batteryInfo = getBatteryInfo()
+        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val batteryTemp = (battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0) / 10f
+        val cpuTemp = readCpuTemperature()
         val storage = getStorageInfo()
-        val cpuUsage = getCpuUsage()
-        val processCount = getProcessCount()
 
         DeviceStats(
-            cpuUsagePercent = cpuUsage,
-            ramUsedMb = ramUsedMb,
+            cpuUsagePercent = getCpuUsage(),
+            ramUsedMb = ramTotalMb - ramAvailMb,
             ramTotalMb = ramTotalMb,
             ramAvailableMb = ramAvailMb,
             swapUsedMb = swapUsed,
             swapTotalMb = swapTotal,
             temperatureCpu = cpuTemp,
             temperatureBattery = batteryTemp,
-            temperatureSkin = skinTemp,
-            batteryLevel = batteryInfo.first,
-            batteryCharging = batteryInfo.second,
-            thermalStatus = thermalStatus,
-            runningProcesses = processCount,
+            batteryLevel = batteryLevel(battery),
+            batteryCharging = isCharging(battery),
+            batteryHealth = batteryHealth(battery),
+            thermalStatus = getThermalStatus(batteryTemp),
             storageUsedGb = storage.first,
-            storageTotalGb = storage.second
+            storageTotalGb = storage.second,
+            uptimeHours = SystemClock.elapsedRealtime() / 3_600_000L
         )
     }
 
-    private fun readRawCpuStats(): Pair<Long, Long>? {
-        return try {
-            val line = File("/proc/stat").readLines().firstOrNull { it.startsWith("cpu ") } ?: return null
-            val parts = line.split(" ").filter { it.isNotEmpty() }
-            if (parts.size < 8) return null
-            val user    = parts[1].toLong()
-            val nice    = parts[2].toLong()
-            val system  = parts[3].toLong()
-            val idle    = parts[4].toLong()
-            val iowait  = parts[5].toLong()
-            val irq     = parts[6].toLong()
-            val softirq = parts[7].toLong()
-            val total   = user + nice + system + idle + iowait + irq + softirq
-            Pair(total, idle)
-        } catch (e: Exception) { null }
-    }
-
-    private fun getCpuUsage(): Float {
-        val raw = readRawCpuStats()
-        if (raw != null) {
-            val (total, idle) = raw
-            val totalDiff = total - lastCpuTotal
-            val idleDiff  = idle  - lastCpuIdle
-            lastCpuTotal = total
-            lastCpuIdle  = idle
-            if (totalDiff > 0) {
-                return ((totalDiff - idleDiff).toFloat() / totalDiff * 100f).coerceIn(0f, 100f)
-            }
+    // ── CPU ────────────────────────────────────────────────────────────────
+    private fun readRawCpuStats(): Pair<Long, Long>? = try {
+        val line = File("/proc/stat").useLines { l -> l.firstOrNull { it.startsWith("cpu ") } }
+        val parts = line?.split(" ")?.filter { it.isNotEmpty() }
+        if (parts == null || parts.size < 8) null else {
+            val v = (1..7).map { parts[it].toLong() }
+            Pair(v.sum(), v[3])  // total, idle
         }
-        // Fallback: /proc/loadavg → 1-minute load / core count → rough %
-        return try {
-            val load = File("/proc/loadavg").readText().trim().split(" ").firstOrNull()?.toFloatOrNull() ?: return 0f
-            val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-            (load / cores * 100f).coerceIn(0f, 100f)
-        } catch (e: Exception) { 0f }
+    } catch (_: Exception) { null }
+
+    /** Uso de CPU real desde /proc/stat, o -1 si el sistema no lo permite (Android 8+). */
+    private fun getCpuUsage(): Float {
+        if (cpuReadable == false) return -1f
+        val raw = readRawCpuStats()
+        if (raw == null) { cpuReadable = false; return -1f }
+        val (total, idle) = raw
+        val first = cpuReadable == null
+        cpuReadable = true
+        val totalDiff = total - lastCpuTotal
+        val idleDiff = idle - lastCpuIdle
+        lastCpuTotal = total
+        lastCpuIdle = idle
+        if (first || totalDiff <= 0) return -1f
+        return ((totalDiff - idleDiff).toFloat() / totalDiff * 100f).coerceIn(0f, 100f)
     }
 
-    // Returns count of unique running user-space processes.
-    // Uses getRunningServices() which works on all Android versions, unlike
-    // getRunningAppProcesses() which is restricted to the own process on Android 12+.
-    @Suppress("DEPRECATION")
-    private fun getProcessCount(): Int {
-        return try {
-            val svcs = activityManager.getRunningServices(500)
-            val pids = svcs?.map { it.pid }?.toSet() ?: emptySet()
-            // Include own process
-            (pids.size + 1).coerceAtLeast(1)
-        } catch (e: Exception) { 1 }
+    // ── Temperatura ────────────────────────────────────────────────────────
+    /** Temperatura de CPU si el fabricante deja leerla; 0 si no. */
+    private fun readCpuTemperature(): Float {
+        val zones = cpuZones ?: findCpuZones().also { cpuZones = it }
+        var max = 0f
+        for (tempFile in zones) {
+            val raw = try { tempFile.readText().trim().toLongOrNull() } catch (_: Exception) { null } ?: continue
+            val t = if (raw > 1000) raw / 1000f else raw.toFloat()
+            if (t in 15f..120f && t > max) max = t
+        }
+        return max
     }
 
-    private fun readSwapInfo(): Pair<Long, Long> {
-        return try {
-            var swapTotal = 0L
-            var swapFree  = 0L
-            File("/proc/meminfo").forEachLine { line ->
-                when {
-                    line.startsWith("SwapTotal:") ->
-                        swapTotal = line.split("\\s+".toRegex())[1].toLong() / 1024
-                    line.startsWith("SwapFree:") ->
-                        swapFree = line.split("\\s+".toRegex())[1].toLong() / 1024
-                }
-            }
-            Pair(swapTotal - swapFree, swapTotal)
-        } catch (e: Exception) { Pair(0L, 0L) }
-    }
+    private fun findCpuZones(): List<File> = try {
+        File("/sys/class/thermal/").listFiles()
+            ?.filter { it.name.startsWith("thermal_zone") }
+            ?.mapNotNull { zone ->
+                val type = try { File(zone, "type").readText().trim().lowercase() } catch (_: Exception) { return@mapNotNull null }
+                val temp = File(zone, "temp")
+                // OJO: "soc" a secas es el % de carga en muchos Qualcomm (no una temperatura)
+                val isCpu = type.startsWith("cpu") || type.contains("cpu-") || type.contains("soc_thermal") ||
+                    type.contains("tsens_tz_sensor") || type == "mtktscpu"
+                if (isCpu && temp.canRead()) temp else null
+            } ?: emptyList()
+    } catch (_: Exception) { emptyList() }
 
-    private fun readTemperatures(): Triple<Float, Float, Float> {
-        var cpuTemp     = 0f
-        var batteryTemp = 0f
-        var skinTemp    = 0f
-
-        try {
-            val thermalDir = File("/sys/class/thermal/")
-            thermalDir.listFiles()?.forEach { zone ->
-                val typeFile = File(zone, "type")
-                val tempFile = File(zone, "temp")
-                if (typeFile.exists() && tempFile.exists()) {
-                    val type    = typeFile.readText().trim().lowercase()
-                    val rawTemp = tempFile.readText().trim().toLongOrNull() ?: 0L
-                    val temp    = if (rawTemp > 1000) rawTemp / 1000f else rawTemp.toFloat()
-                    when {
-                        type.contains("cpu") || type.contains("ap") || type.contains("soc") ->
-                            if (temp > cpuTemp) cpuTemp = temp
-                        type.contains("skin") || type.contains("surface") ->
-                            if (temp > skinTemp) skinTemp = temp
-                        type.contains("bat") ->
-                            if (batteryTemp == 0f) batteryTemp = temp
-                    }
-                }
-            }
-        } catch (e: Exception) {}
-
-        // Battery temperature via BatteryManager (most reliable)
-        try {
-            val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            val rawBat  = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
-            batteryTemp = rawBat / 10f
-        } catch (e: Exception) {}
-
-        return Triple(cpuTemp, batteryTemp, skinTemp)
-    }
-
-    private fun getThermalStatus(cpuTemp: Float, skinTemp: Float): ThermalStatus {
+    /**
+     * Estado térmico: en Android 10+ lo da el propio sistema (fiable). En Android 8-9 se estima
+     * con la temperatura de la batería (umbrales conservadores: 40 °C en batería ya es caliente).
+     */
+    private fun getThermalStatus(batteryTemp: Float): ThermalStatus {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             return when (powerManager.currentThermalStatus) {
-                PowerManager.THERMAL_STATUS_NONE     -> ThermalStatus.NONE
-                PowerManager.THERMAL_STATUS_LIGHT    -> ThermalStatus.LIGHT
+                PowerManager.THERMAL_STATUS_LIGHT -> ThermalStatus.LIGHT
                 PowerManager.THERMAL_STATUS_MODERATE -> ThermalStatus.MODERATE
-                PowerManager.THERMAL_STATUS_SEVERE   -> ThermalStatus.SEVERE
+                PowerManager.THERMAL_STATUS_SEVERE -> ThermalStatus.SEVERE
                 PowerManager.THERMAL_STATUS_CRITICAL -> ThermalStatus.CRITICAL
                 PowerManager.THERMAL_STATUS_EMERGENCY,
                 PowerManager.THERMAL_STATUS_SHUTDOWN -> ThermalStatus.EMERGENCY
                 else -> ThermalStatus.NONE
             }
         }
-        val maxTemp = maxOf(cpuTemp, skinTemp)
         return when {
-            maxTemp >= 55f -> ThermalStatus.CRITICAL
-            maxTemp >= 50f -> ThermalStatus.SEVERE
-            maxTemp >= 45f -> ThermalStatus.MODERATE
-            maxTemp >= 40f -> ThermalStatus.LIGHT
-            else           -> ThermalStatus.NONE
+            batteryTemp >= 48f -> ThermalStatus.SEVERE
+            batteryTemp >= 44f -> ThermalStatus.MODERATE
+            batteryTemp >= 40f -> ThermalStatus.LIGHT
+            else -> ThermalStatus.NONE
         }
     }
 
-    private fun getBatteryInfo(): Pair<Int, Boolean> {
-        return try {
-            val intent  = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            val level   = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) ?: 0
-            val status  = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-            val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                           status == BatteryManager.BATTERY_STATUS_FULL
-            Pair(level, charging)
-        } catch (e: Exception) { Pair(0, false) }
+    // ── Batería ────────────────────────────────────────────────────────────
+    private fun batteryLevel(intent: Intent?): Int {
+        val cap = try { batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) } catch (_: Exception) { -1 }
+        if (cap in 0..100) return cap
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        return if (level >= 0 && scale > 0) level * 100 / scale else 0
     }
 
-    private fun getStorageInfo(): Pair<Float, Float> {
-        return try {
-            val stat  = StatFs(Environment.getDataDirectory().path)
-            val total = stat.totalBytes / 1024f / 1024f / 1024f
-            val free  = stat.availableBytes / 1024f / 1024f / 1024f
-            Pair(total - free, total)
-        } catch (e: Exception) { Pair(0f, 0f) }
+    private fun isCharging(intent: Intent?): Boolean {
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        return status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
     }
+
+    private fun batteryHealth(intent: Intent?): BatteryHealth =
+        when (intent?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1)) {
+            BatteryManager.BATTERY_HEALTH_GOOD -> BatteryHealth.GOOD
+            BatteryManager.BATTERY_HEALTH_OVERHEAT -> BatteryHealth.OVERHEAT
+            BatteryManager.BATTERY_HEALTH_DEAD -> BatteryHealth.DEAD
+            BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> BatteryHealth.OVER_VOLTAGE
+            BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> BatteryHealth.FAILURE
+            BatteryManager.BATTERY_HEALTH_COLD -> BatteryHealth.COLD
+            else -> BatteryHealth.UNKNOWN
+        }
+
+    // ── Memoria y almacenamiento ───────────────────────────────────────────
+    private fun readSwapInfo(): Pair<Long, Long> = try {
+        var swapTotal = 0L
+        var swapFree = 0L
+        File("/proc/meminfo").useLines { lines ->
+            for (line in lines) {
+                if (line.startsWith("SwapTotal:")) swapTotal = kb(line) / 1024
+                else if (line.startsWith("SwapFree:")) { swapFree = kb(line) / 1024; break }
+            }
+        }
+        Pair((swapTotal - swapFree).coerceAtLeast(0), swapTotal)
+    } catch (_: Exception) { Pair(0L, 0L) }
+
+    private fun kb(line: String): Long =
+        line.substringAfter(':').trim().substringBefore(' ').toLongOrNull() ?: 0L
+
+    private fun getStorageInfo(): Pair<Float, Float> = try {
+        val stat = StatFs(Environment.getDataDirectory().path)
+        val total = stat.totalBytes / 1024f / 1024f / 1024f
+        val free = stat.availableBytes / 1024f / 1024f / 1024f
+        Pair(total - free, total)
+    } catch (_: Exception) { Pair(0f, 0f) }
 }

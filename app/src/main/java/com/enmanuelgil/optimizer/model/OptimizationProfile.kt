@@ -1,83 +1,39 @@
 package com.enmanuelgil.optimizer.model
 
+/**
+ * Perfiles de ajuste. Solo contienen cambios que Android permite de verdad (con el permiso
+ * concedido por ADB) y que se pueden comprobar y restaurar.
+ *
+ * Ya no se "cierran apps en segundo plano": desde Android 14 el sistema no deja a ninguna app
+ * cerrar procesos de otras (killBackgroundProcesses solo afecta a la propia app) y Google
+ * desaconseja hacerlo también en versiones anteriores. Probado en un vivo con Android 13:
+ * tampoco surtía efecto.
+ */
 enum class OptimizationProfile(
     val displayName: String,
     val description: String,
-    val killAggressiveness: KillLevel,
-    val reducedAnimations: Boolean,
-    val disableNfc: Boolean,
-    val disableWifiScan: Boolean,
-    val restrictBackgroundData: Boolean,
-    val pauseSync: Boolean,
-    val enableDoze: Boolean,
-    val thermalAlertTemp: Float,
-    val autoOptimizeOnHeat: Boolean
+    /** Escala de animaciones (1.0 = normal, 0 = sin animaciones). */
+    val animationScale: Float,
+    /** Desactivar la búsqueda de redes WiFi/Bluetooth con el WiFi apagado. */
+    val disableWifiScan: Boolean
 ) {
     RECOMMENDED(
         displayName = "Recomendado",
-        description = "Balance óptimo entre rendimiento y funcionalidad",
-        killAggressiveness = KillLevel.MODERATE,
-        reducedAnimations = true,
-        disableNfc = false,
-        disableWifiScan = true,
-        restrictBackgroundData = true,
-        pauseSync = false,
-        enableDoze = true,
-        thermalAlertTemp = 45f,
-        autoOptimizeOnHeat = true
+        description = "Animaciones al doble de rápido: el teléfono se siente más ágil",
+        animationScale = 0.5f,
+        disableWifiScan = false
     ),
     PERFORMANCE(
-        displayName = "Rendimiento",
-        description = "Máxima fluidez — más consumo de batería",
-        killAggressiveness = KillLevel.AGGRESSIVE,
-        reducedAnimations = true,
-        disableNfc = true,
-        disableWifiScan = true,
-        restrictBackgroundData = true,
-        pauseSync = true,
-        enableDoze = false,
-        thermalAlertTemp = 50f,
-        autoOptimizeOnHeat = true
+        displayName = "Máxima agilidad",
+        description = "Sin animaciones: todo aparece al instante (menos vistoso)",
+        animationScale = 0f,
+        disableWifiScan = false
     ),
     BATTERY_SAVER(
-        displayName = "Ahorro de Batería",
-        description = "Máxima duración de batería",
-        killAggressiveness = KillLevel.AGGRESSIVE,
-        reducedAnimations = true,
-        disableNfc = true,
-        disableWifiScan = true,
-        restrictBackgroundData = true,
-        pauseSync = true,
-        enableDoze = true,
-        thermalAlertTemp = 40f,
-        autoOptimizeOnHeat = true
-    ),
-    THERMAL_GUARD(
-        displayName = "Protección Térmica",
-        description = "Prioriza enfriar el dispositivo",
-        killAggressiveness = KillLevel.MAXIMUM,
-        reducedAnimations = true,
-        disableNfc = true,
-        disableWifiScan = true,
-        restrictBackgroundData = true,
-        pauseSync = true,
-        enableDoze = true,
-        thermalAlertTemp = 38f,
-        autoOptimizeOnHeat = true
-    ),
-    CUSTOM(
-        displayName = "Personalizado",
-        description = "Configura cada ajuste manualmente",
-        killAggressiveness = KillLevel.MODERATE,
-        reducedAnimations = false,
-        disableNfc = false,
-        disableWifiScan = false,
-        restrictBackgroundData = false,
-        pauseSync = false,
-        enableDoze = false,
-        thermalAlertTemp = 50f,
-        autoOptimizeOnHeat = false
+        displayName = "Ahorro de batería",
+        description = "Animaciones rápidas y sin búsquedas WiFi/Bluetooth con el WiFi apagado " +
+            "(la ubicación puede ser algo menos precisa)",
+        animationScale = 0.5f,
+        disableWifiScan = true
     )
 }
-
-enum class KillLevel { LIGHT, MODERATE, AGGRESSIVE, MAXIMUM }

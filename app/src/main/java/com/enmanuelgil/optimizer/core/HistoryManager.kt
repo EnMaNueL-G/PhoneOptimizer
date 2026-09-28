@@ -10,6 +10,7 @@ object HistoryManager {
     private const val KEY_RECORDS = "records"
     private const val MAX_RECORDS = 30
 
+    @Synchronized
     fun save(context: Context, record: OptimizationRecord) {
         val existing = load(context).toMutableList()
         existing.add(0, record)
@@ -27,7 +28,7 @@ object HistoryManager {
             })
         }
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().putString(KEY_RECORDS, array.toString()).apply()
+            .edit().putString(KEY_RECORDS, array.toString()).commit()
     }
 
     fun load(context: Context): List<OptimizationRecord> {
@@ -50,6 +51,7 @@ object HistoryManager {
         } catch (e: Exception) { emptyList() }
     }
 
+    @Synchronized
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit().remove(KEY_RECORDS).apply()

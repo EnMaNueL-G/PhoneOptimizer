@@ -7,7 +7,7 @@ import android.content.Intent
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            ThermalMonitorService.start(context)
+            ThermalMonitorService.startIfEnabled(context)
             MaintenanceScheduler.applyFromPrefs(context)
         }
     }
