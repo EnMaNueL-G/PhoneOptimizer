@@ -1,127 +1,125 @@
 @echo off
 chcp 65001 >nul
+title PhoneOptimizer - Activar modo avanzado
 color 0A
-title PhoneOptimizer — Activar Optimización Avanzada
 
 echo.
-echo  ╔══════════════════════════════════════════════════════════╗
-echo  ║        PhoneOptimizer — Activación Avanzada             ║
-echo  ║     Este programa activa las funciones premium          ║
-echo  ║     de PhoneOptimizer en tu Android. Solo necesitas     ║
-echo  ║     conectar tu teléfono y hacer clic en Aceptar.       ║
-echo  ╚══════════════════════════════════════════════════════════╝
+echo  ============================================================
+echo    PhoneOptimizer - Activar modo avanzado (una sola vez)
+echo  ============================================================
+echo.
+echo   Concede a PhoneOptimizer el permiso para cambiar la velocidad
+echo   de las animaciones, la busqueda WiFi/Bluetooth y el DNS para
+echo   bloquear anuncios. Todo se puede restaurar desde la app.
+echo   Nada mas: no instala nada en el telefono ni borra datos.
 echo.
 
-:: ── Buscar ADB ──────────────────────────────────────────────────────────────
-set ADB=
-if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" (
-    set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
-    goto :found_adb
+:: -- Buscar ADB --------------------------------------------------------------
+set "ADB="
+if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
+if not defined ADB if exist "%~dp0platform-tools\adb.exe" set "ADB=%~dp0platform-tools\adb.exe"
+if not defined ADB (
+    where adb >nul 2>&1 && set "ADB=adb"
 )
-if exist "%USERPROFILE%\AppData\Local\Android\Sdk\platform-tools\adb.exe" (
-    set ADB=%USERPROFILE%\AppData\Local\Android\Sdk\platform-tools\adb.exe
-    goto :found_adb
-)
-where adb >nul 2>&1
-if %ERRORLEVEL%==0 (
-    set ADB=adb
-    goto :found_adb
-)
+if defined ADB goto :found_adb
 
-:: ADB no encontrado — descargarlo automáticamente
-echo  [!] ADB no está instalado. Descargando automáticamente...
-echo.
-powershell -Command "& { $url='https://dl.google.com/android/repository/platform-tools-latest-windows.zip'; $zip='%TEMP%\platform-tools.zip'; $dst='%TEMP%\pt'; Invoke-WebRequest $url -OutFile $zip -UseBasicParsing; Expand-Archive $zip $dst -Force; Write-Host 'Descarga completa.' }"
-if exist "%TEMP%\pt\platform-tools\adb.exe" (
-    set ADB=%TEMP%\pt\platform-tools\adb.exe
-    echo  [✓] ADB descargado correctamente
+echo  [!] No se encontro ADB. Se descargara de Google (dl.google.com, oficial).
+choice /c SN /m "  Descargar ahora"
+if errorlevel 2 exit /b 1
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; $zip=Join-Path $env:TEMP 'platform-tools.zip'; Invoke-WebRequest 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile $zip -UseBasicParsing; Expand-Archive $zip '%~dp0' -Force"
+if exist "%~dp0platform-tools\adb.exe" (
+    set "ADB=%~dp0platform-tools\adb.exe"
     goto :found_adb
-) else (
-    color 0C
-    echo  [ERROR] No se pudo descargar ADB. Verifica tu conexión a internet.
+)
+color 0C
+echo  [ERROR] No se pudo descargar ADB. Revisa la conexion a internet.
+pause
+exit /b 1
+
+:found_adb
+echo  [OK] ADB: %ADB%
+echo.
+
+:: -- Esperar al telefono -----------------------------------------------------
+echo  1. En el telefono: Ajustes ^> Acerca del telefono ^> toca 7 veces
+echo     "Numero de compilacion" para activar las Opciones de desarrollador.
+echo  2. En Opciones de desarrollador activa "Depuracion USB".
+echo     Xiaomi / Redmi / POCO: activa tambien
+echo     "Depuracion USB (ajustes de seguridad)".
+echo  3. Conecta el cable y, si el telefono lo pregunta, toca PERMITIR.
+echo.
+echo  Esperando telefono...
+"%ADB%" start-server >nul 2>&1
+
+:wait_device
+set "DEVICE_ID="
+set /a COUNT=0
+for /f "skip=1 tokens=1,2" %%a in ('"%ADB%" devices') do (
+    if "%%b"=="device" (
+        set /a COUNT+=1
+        set "DEVICE_ID=%%a"
+    )
+)
+if %COUNT%==0 (
+    timeout /t 3 /nobreak >nul
+    goto :wait_device
+)
+:: Varios telefonos conectados: preguntar cual (o usar ANDROID_SERIAL si esta definido)
+if defined ANDROID_SERIAL set "DEVICE_ID=%ANDROID_SERIAL%" & goto :have_device
+if %COUNT% GTR 1 (
+    echo.
+    echo  Hay %COUNT% telefonos conectados:
+    "%ADB%" devices -l | findstr /v "List"
+    set /p "DEVICE_ID=  Escribe el numero de serie (primera columna) del telefono a activar: "
+)
+:have_device
+
+for /f "tokens=*" %%m in ('"%ADB%" -s %DEVICE_ID% shell getprop ro.product.model 2^>nul') do set "MODEL=%%m"
+echo  [OK] Telefono: %MODEL% (%DEVICE_ID%)
+echo.
+
+:: -- Comprobar que la app esta instalada -------------------------------------
+"%ADB%" -s %DEVICE_ID% shell pm path com.enmanuelgil.optimizer >nul 2>&1
+if errorlevel 1 (
+    color 0E
+    echo  [!] PhoneOptimizer no esta instalada en este telefono. Instalala primero.
     pause
     exit /b 1
 )
 
-:found_adb
-echo  [✓] ADB encontrado: %ADB%
-echo.
-
-:: ── Verificar teléfono conectado ─────────────────────────────────────────────
-echo  Paso 1 — Conecta tu teléfono al PC con el cable USB
-echo  Paso 2 — Si aparece un mensaje en el teléfono "Permitir depuración USB" → toca PERMITIR
-echo.
-echo  Esperando teléfono...
-echo.
-
-:wait_device
-"%ADB%" kill-server >nul 2>&1
-"%ADB%" start-server >nul 2>&1
-for /f "tokens=1" %%i in ('"%ADB%" devices ^| findstr /v "List" ^| findstr "device"') do set DEVICE_ID=%%i
-
-if "%DEVICE_ID%"=="" (
-    timeout /t 3 /nobreak >nul
-    goto :wait_device
-)
-
-echo  [✓] Teléfono detectado: %DEVICE_ID%
-echo.
-
-:: ── Verificar si es MIUI V14 ────────────────────────────────────────────────
-for /f "tokens=*" %%v in ('"%ADB%" -s %DEVICE_ID% shell getprop ro.miui.ui.version.name 2^>nul') do set MIUI_VER=%%v
-for /f "tokens=*" %%m in ('"%ADB%" -s %DEVICE_ID% shell getprop ro.product.model 2^>nul') do set MODEL=%%m
-
-echo  Modelo: %MODEL%
-if defined MIUI_VER echo  MIUI: %MIUI_VER%
-echo.
-
-if "%MIUI_VER%"=="V140" goto :miui_blocked
-if "%MIUI_VER%"=="V150" goto :miui_blocked
-if "%MIUI_VER%"=="V160" goto :miui_blocked
-
-:: ── Ejecutar el comando ──────────────────────────────────────────────────────
-echo  Activando funciones avanzadas...
+:: -- Conceder el permiso -----------------------------------------------------
+echo  Activando...
 "%ADB%" -s %DEVICE_ID% shell pm grant com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS
-if %ERRORLEVEL%==0 (
-    color 0A
-    echo.
-    echo  ╔══════════════════════════════════════════════════════════╗
-    echo  ║   ✓ ACTIVADO CORRECTAMENTE                              ║
-    echo  ║                                                          ║
-    echo  ║   Ahora en tu teléfono:                                 ║
-    echo  ║   1. Cierra PhoneOptimizer completamente                ║
-    echo  ║   2. Vuelve a abrirla                                    ║
-    echo  ║   3. Verás "Optimización completa activa" en verde      ║
-    echo  ╚══════════════════════════════════════════════════════════╝
-) else (
-    color 0E
-    echo.
-    echo  [!] El permiso no pudo activarse en este dispositivo.
-    echo  [!] Puede deberse a restricciones del fabricante (Xiaomi MIUI V14).
-    echo  [!] Las funciones básicas de la app siguen funcionando.
-)
+
+:: Verificar de verdad que quedo concedido
+"%ADB%" -s %DEVICE_ID% shell dumpsys package com.enmanuelgil.optimizer | findstr /c:"WRITE_SECURE_SETTINGS: granted=true" >nul
+if errorlevel 1 goto :failed
+
+color 0A
+echo.
+echo  ============================================================
+echo    [OK] MODO AVANZADO ACTIVADO
+echo.
+echo    Abre PhoneOptimizer: en Optimizar vera "Modo avanzado activo".
+echo    Ya puedes desconectar el cable y desactivar la depuracion USB.
+echo.
+echo    Para quitarlo en el futuro:
+echo    adb shell pm revoke com.enmanuelgil.optimizer android.permission.WRITE_SECURE_SETTINGS
+echo  ============================================================
 echo.
 pause
 exit /b 0
 
-:miui_blocked
+:failed
 color 0E
-echo  ╔══════════════════════════════════════════════════════════╗
-echo  ║   ⚠ XIAOMI MIUI V14 / HyperOS DETECTADO                ║
-echo  ║                                                          ║
-echo  ║   Tu teléfono bloquea este tipo de activación.         ║
-echo  ║   NO es un error de PhoneOptimizer.                     ║
-echo  ║                                                          ║
-echo  ║   La app funciona en modo básico:                       ║
-echo  ║   ✓ Libera RAM                                          ║
-echo  ║   ✓ Detiene procesos                                    ║
-echo  ║   ✓ Garbage Collection                                  ║
-echo  ║                                                          ║
-echo  ║   Funciones no disponibles en MIUI V14:                 ║
-echo  ║   ✗ Animaciones reducidas                               ║
-echo  ║   ✗ WiFi scan                                           ║
-echo  ║   ✗ Doze profundo                                       ║
-echo  ╚══════════════════════════════════════════════════════════╝
+echo.
+echo  [!] El telefono no acepto el permiso.
+echo      - Xiaomi / Redmi / POCO: activa "Depuracion USB (ajustes de seguridad)"
+echo        en Opciones de desarrollador (puede pedir iniciar sesion en Mi Account)
+echo        y vuelve a ejecutar este archivo.
+echo      - Otras marcas: desconecta y conecta el cable y vuelve a intentarlo.
+echo.
+echo  La app sigue funcionando sin esto (diagnostico, consejos, apps mas usadas).
 echo.
 pause
-exit /b 0
+exit /b 1
